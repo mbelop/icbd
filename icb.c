@@ -91,8 +91,11 @@ icb_input(struct icb_session *is)
 			icb_drop(is, NULL);
 			return;
 		}
-		if (strlen(cmd) == 0 || strcmp(cmd, "login") != 0)
-			goto inputerr;
+		if (strlen(cmd) == 0 || strcmp(cmd, "login") != 0) {
+			icb_error(is, "Malformed login packet");
+			icb_drop(is, NULL);
+			return;
+		}
 		icb_login(is, group, nick, client);
 		break;
 	}
@@ -119,9 +122,6 @@ icb_input(struct icb_session *is)
 		/* everything else is not valid */
 		icb_error(is, "Bummer. This is a bummer, man.");
 	}
-	return;
-inputerr:
-	icb_error(is, "Malformed packet");
 }
 
 /*
