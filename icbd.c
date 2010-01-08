@@ -41,9 +41,10 @@
 
 extern char *__progname;
 
-int creategroups;
-int foreground;
-int verbose;
+char srvname[MAXHOSTNAMELEN];
+int  creategroups;
+int  foreground;
+int  verbose;
 
 void usage(void);
 void getpeerinfo(struct icb_session *);
@@ -71,7 +72,7 @@ main(int argc, char *argv[])
 	/* init group lists before calling icb_addgroup */
 	icb_init(&ic);
 
-	while ((ch = getopt(argc, argv, "46CdG:v")) != -1)
+	while ((ch = getopt(argc, argv, "46CdG:S:v")) != -1)
 		switch (ch) {
 		case '4':
 			inet4++;
@@ -87,6 +88,9 @@ main(int argc, char *argv[])
 			break;
 		case 'G':
 			icbd_grplist(optarg);
+			break;
+		case 'S':
+			strlcpy(srvname, optarg, sizeof srvname);
 			break;
 		case 'v':
 			verbose++;

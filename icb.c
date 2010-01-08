@@ -28,6 +28,7 @@
 #include "icbd.h"
 
 extern int creategroups;
+extern char srvname[MAXHOSTNAMELEN];
 
 void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
@@ -45,6 +46,15 @@ icb_init(struct icbd_callbacks *ic)
 	icb_send = ic->send;
 
 	LIST_INIT(&groups);
+
+	if (strlen(srvname) == 0)
+		(void)gethostname(srvname, sizeof srvname);
+	/*
+	 * MAXHOSTNAMELEN is usually greater than what we
+	 * can actually send, hence truncation:
+	 */
+	if (strlen(srvname) > 200)
+		srvname[200] = '\0';
 }
 
 /*
@@ -53,11 +63,7 @@ icb_init(struct icbd_callbacks *ic)
 void
 icb_start(struct icb_session *is)
 {
-	char hname[MAXHOSTNAMELEN];
-
-	bzero(hname, sizeof hname);
-	(void)gethostname(hname, sizeof hname);
-	icb_sendfmt(is, "%c%c%c%s%c%s", ICB_M_PROTO, '1', ICB_M_SEP, hname,
+	icb_sendfmt(is, "%c%c%c%s%c%s", ICB_M_PROTO, '1', ICB_M_SEP, srvname,
 	    ICB_M_SEP, "icbd");
 	SETF(is->flags, ICB_SF_PROTOSENT);
 }
