@@ -1,0 +1,21 @@
+icbd: a simple yet secure ICB daemon written in C
+=================================================
+
+FAQ:
+====
+
+Q. WTF?
+A. http://www.icb.net/
+
+Q. Ahoi! Where are the protocol specs?
+A. http://www.icb.net/_jrudd/icb/protocol.html
+
+Q. This' really old shit, man!
+A. Yes, it is!
+
+Q. Why do you need that shit, man?
+A. Well, I don't need it at all!
+
+Q. Any clients?
+A. There are icb, ircII, irssi (with icb plugin), zenicb (emacs plugin) and
+   an irc to icb proxy - icbirc.
