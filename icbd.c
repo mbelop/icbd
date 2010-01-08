@@ -56,10 +56,9 @@ void icbd_grplist(char *);
 void icbd_restrict(void);
 void icbd_write(struct icb_session *, char *, ssize_t);
 
-#ifndef bufferevent_setwatermark
+/* event.h as it's shipped with OpenBSD doesn't include this prototype */
 void bufferevent_setwatermark(struct bufferevent *, short events,
     size_t lowmark, size_t highmark);
-#endif
 
 int
 main(int argc, char *argv[])
