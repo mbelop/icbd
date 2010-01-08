@@ -25,6 +25,7 @@
 .Op Fl 46Cdv
 .Oo Fl G Ar group1
 .Ns Oo , Ns Ar ... Oc Oc
+.Op Fl S Ar name
 .Sm off
 .Oo Ar addr
 .Ns Op : Ns Ar port
@@ -39,7 +40,7 @@ protocol daemon which allows peoples to chat online.
 .Pp
 Please refer to the document specified in the
 .Sx SEE ALSO
-section for more information about ICB protocol.
+section for more information about the ICB protocol.
 .Pp
 The options are as follows:
 .Bl -tag -width "-G group"
@@ -62,6 +63,9 @@ will run in the foreground and log to
 Instruct
 .Nm
 to create specified groups at startup.
+.It Fl S Ar name
+Set the server's name to
+.Ar name .
 .It Fl v
 Produce more verbose output.
 .El

@@ -277,7 +277,7 @@ __dead void
 usage(void)
 {
 	(void)fprintf(stderr, "usage: %s [-46Cdv] [-G group1[,group2,...]] "
-	   "[[addr][:port] ...]\n",  __progname);
+	   "[-S name] [[addr][:port] ...]\n",  __progname);
 	exit(EX_USAGE);
 }
 
