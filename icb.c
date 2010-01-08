@@ -14,10 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef lint
-static const char rcsid[] = "$ABSD: icb.c,v 1.23 2010/01/03 20:54:18 kmerz Exp $";
-#endif /* not lint */
-
 #include <sys/param.h>
 #include <sys/queue.h>
 #include <stdarg.h>
