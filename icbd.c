@@ -19,7 +19,9 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <netinet/in_systm.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -220,9 +222,6 @@ icbd_dns(int fd, short event, void *arg)
 	if (event != EV_READ)
 		return;
 
-	if (verbose)
-		syslog(LOG_DEBUG, "icbd_dns");
-
 	if (read(fd, is->host, sizeof is->host) < 0)
 		syslog(LOG_ERR, "read: %m");
 
@@ -239,13 +238,16 @@ icbd_accept(int fd, short event __attribute__((__unused__)),
 	struct sockaddr_storage ss;
 	struct icb_session *is;
 	socklen_t ss_len = sizeof ss;
-	int s;
+	int s, tos = IPTOS_LOWDELAY;
 
 	ss.ss_len = ss_len;
 	if ((s = accept(fd, (struct sockaddr *)&ss, &ss_len)) < 0) {
 		syslog(LOG_ERR, "accept: %m");
 		return;
 	}
+	if (ss.ss_family == AF_INET)
+		if (setsockopt(s, IPPROTO_IP, IP_TOS, &tos, sizeof tos) < 0)
+			syslog(LOG_WARNING, "IP_TOS: %m");
 	if ((is = calloc(1, sizeof *is)) == NULL) {
 		syslog(LOG_ERR, "calloc: %m");
 		(void)close(s);

@@ -105,9 +105,6 @@ dns_dispatch(int fd, short event, void *arg)
 	if (event != EV_READ)
 		return;
 
-	if (verbose)
-		syslog(LOG_DEBUG, "dns_dispatch");
-
 	if (read(fd, &ss, ss_len) != ss_len) {
 		syslog(LOG_ERR, "dns read: %m");
 		exit(1);
