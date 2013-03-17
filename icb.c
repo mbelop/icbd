@@ -316,7 +316,7 @@ icb_status(struct icb_session *is, int type, const char *fmt, ...)
 		{ STATUS_STATUS,	"Status" },
 		{ STATUS_TOPIC,		"Topic" },
 		{ STATUS_WARNING,	"Warning" },
-		{ NULL,			NULL }
+		{ 0,			NULL }
 	};
 
 	if (type < 0 || type > (int)nitems(msgtab) - 1)
