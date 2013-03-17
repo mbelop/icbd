@@ -120,6 +120,10 @@ icb_input(struct icb_session *is)
 		icb_command(is, cmd, arg);
 		break;
 	}
+	case ICB_M_PONG: {
+		icb_sendfmt(is, "%c", ICB_M_PING);
+		break;
+	}
 	case ICB_M_PROTO:
 	case ICB_M_NOOP:
 		/* ignore */
