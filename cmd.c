@@ -201,10 +201,24 @@ icb_cmd_personal(struct icb_session *is, char *arg)
 }
 
 void
-icb_cmd_pass(struct icb_session *is, char *arg __attribute__((unused)))
+icb_cmd_pass(struct icb_session *is, char *arg)
 {
-	if (!icb_ismoder(is->group, is))
-		(void)icb_pass(is->group, is->group->moder, is);
+	struct icb_group *ig = is->group;
+	struct icb_session *s;
+
+	if (!ig->moder)		/* if there is no mod, let anyone grab it */
+		(void)icb_pass(ig, ig->moder, is);
+	else if (icb_ismoder(ig, is)) {
+		LIST_FOREACH(s, &ig->sess, entry) {
+			if (strcmp(s->nick, arg) == 0)
+				break;
+		}
+		if (s == NULL) {
+			icb_status(is, STATUS_NOTIFY, "No such user");
+			return;
+		}
+		(void)icb_pass(ig, ig->moder, s);
+	}
 }
 
 void
