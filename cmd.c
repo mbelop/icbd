@@ -233,6 +233,11 @@ icb_cmd_topic(struct icb_session *is, char *arg)
 		else
 			icb_status(is, STATUS_TOPIC, "The topic is not set.");
 	} else {		/* setting the topic */
+		if (!icb_ismoder(ig, is)) {
+			icb_status(is, STATUS_NOTIFY, "Setting the topic is "
+			    "only for moderators.");
+			return;
+		}
 		strlcpy(ig->topic, arg, sizeof ig->topic);
 		icb_status_group(ig, NULL, STATUS_TOPIC,
 		    "%s changed the topic to \"%s\"", is->nick, ig->topic);
