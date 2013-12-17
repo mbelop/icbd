@@ -23,13 +23,15 @@
 .Nm icbd
 .Bk -words
 .Op Fl 46Cdv
-.Oo Fl G Ar group1
-.Ns Oo , Ns Ar ... Oc Oc
+.Oo
+.Fl G Ar group1 Ns Op , Ns Ar ...
+.Oc
 .Op Fl S Ar name
 .Sm off
-.Oo Ar addr
-.Ns Op : Ns Ar port
-.Ns Oo \  Ns Ar ... Oc Oc
+.Oo
+.Ar addr Op : Ns Ar port
+.Ar \ ...
+.Oc
 .Sm on
 .Ek
 .Sh DESCRIPTION
