@@ -313,6 +313,7 @@ icb_status(struct icb_session *is, int type, const char *fmt, ...)
 		{ STATUS_ARRIVE,	"Arrive" },
 		{ STATUS_BOOT,		"Boot" },
 		{ STATUS_DEPART,	"Depart" },
+		{ STATUS_HELP,		"Help" },
 		{ STATUS_NAME,		"Name" },
 		{ STATUS_NOBEEP,	"No-Beep" },
 		{ STATUS_NOTIFY,	"Notify" },

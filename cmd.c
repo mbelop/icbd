@@ -27,6 +27,7 @@
 
 extern int creategroups;
 
+void icb_cmd_help(struct icb_session *, char *);
 void icb_cmd_beep(struct icb_session *, char *);
 void icb_cmd_boot(struct icb_session *, char *);
 void icb_cmd_change(struct icb_session *, char *);
@@ -44,6 +45,7 @@ icb_cmd_lookup(char *cmd)
 		const char	*cmd;
 		void		(*handler)(struct icb_session *, char *);
 	} cmdtab[] = {
+		{ "?",		icb_cmd_help },
 		{ "beep",	icb_cmd_beep },
 		{ "boot",	icb_cmd_boot },
 		{ "g",		icb_cmd_change },
@@ -62,6 +64,13 @@ icb_cmd_lookup(char *cmd)
 		if (strcasecmp(cmdtab[i].cmd, cmd) == 0)
 			return (cmdtab[i].handler);
 	return (NULL);
+}
+
+void
+icb_cmd_help(struct icb_session *is, char *arg __attribute__((unused)))
+{
+	icb_status(is, STATUS_HELP, "Server supports following commands:");
+	icb_status(is, STATUS_HELP, "beep boot g m name nobeep pass topic");
 }
 
 void
