@@ -120,9 +120,9 @@ icb_cmd_change(struct icb_session *is, char *arg)
 		}
 	}
 
-	/* changing to the same group is strictly prohibited */
+	/* see if we're changing to the same group */
 	if (is->group && is->group == ig) {
-		icb_error(is, "Huh?");
+		icb_error(is, "You are already in that group");
 		return;
 	}
 
