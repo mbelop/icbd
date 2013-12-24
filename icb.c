@@ -314,6 +314,7 @@ icb_status(struct icb_session *is, int type, const char *fmt, ...)
 		{ STATUS_BOOT,		"Boot" },
 		{ STATUS_DEPART,	"Depart" },
 		{ STATUS_NAME,		"Name" },
+		{ STATUS_NOBEEP,	"No-Beep" },
 		{ STATUS_NOTIFY,	"Notify" },
 		{ STATUS_SIGNON,	"Sign-on" },
 		{ STATUS_SIGNOFF,	"Sign-off" },
@@ -451,7 +452,7 @@ icb_who(struct icb_session *is, struct icb_group *ig)
 		ig = is->group;
 	LIST_FOREACH(s, &ig->sess, entry) {
 		(void)snprintf(buf, sizeof buf,
-		    "%c%c%s%c%d%c0%c%d%c%s%c%s%c%s",
+		    "%c%c%s%c%lld%c0%c%lld%c%s%c%s%c%s",
 		    icb_ismoder(ig, s) ? '*' : ' ', ICB_M_SEP,
 		    s->nick, ICB_M_SEP, getmonotime() - s->last,
 		    ICB_M_SEP, ICB_M_SEP, s->login, ICB_M_SEP,

@@ -32,6 +32,7 @@ enum {
 	 STATUS_BOOT,
 	 STATUS_DEPART,
 	 STATUS_NAME,
+	 STATUS_NOBEEP,
 	 STATUS_NOTIFY,
 	 STATUS_SIGNON,
 	 STATUS_SIGNOFF,
@@ -77,11 +78,11 @@ struct icb_session {
 #define SETF(t, f)		 ((t) |= (f))
 #define CLRF(t, f)		 ((t) &= ~(f))
 #define ISSETF(t, f)		 ((t) & (f))
-#define ICB_SF_UNKNOWN		 0x00
 #define ICB_SF_PROTOSENT	 0x01
 #define ICB_SF_LOGGEDIN		 0x02
 #define ICB_SF_NOGROUP		 0x08
-#define ICB_SF_MODERATOR	 0x10
+#define ICB_SF_NOBEEP		 0x10
+#define ICB_SF_NOBEEP2		 0x20
 };
 
 struct icb_group {

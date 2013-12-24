@@ -27,9 +27,11 @@
 
 extern int creategroups;
 
+void icb_cmd_beep(struct icb_session *, char *);
 void icb_cmd_boot(struct icb_session *, char *);
 void icb_cmd_change(struct icb_session *, char *);
 void icb_cmd_name(struct icb_session *, char *);
+void icb_cmd_nobeep(struct icb_session *, char *);
 void icb_cmd_personal(struct icb_session *, char *);
 void icb_cmd_pass(struct icb_session *, char *);
 void icb_cmd_topic(struct icb_session *, char *);
@@ -42,11 +44,13 @@ icb_cmd_lookup(char *cmd)
 		const char	*cmd;
 		void		(*handler)(struct icb_session *, char *);
 	} cmdtab[] = {
+		{ "beep",	icb_cmd_beep },
 		{ "boot",	icb_cmd_boot },
 		{ "g",		icb_cmd_change },
 		{ "m",		icb_cmd_personal },
 		{ "msg",	icb_cmd_personal },
 		{ "name",	icb_cmd_name },
+		{ "nobeep",	icb_cmd_nobeep },
 		{ "pass",	icb_cmd_pass },
 		{ "topic",	icb_cmd_topic },
 		{ "w",		icb_cmd_who },
@@ -58,6 +62,37 @@ icb_cmd_lookup(char *cmd)
 		if (strcasecmp(cmdtab[i].cmd, cmd) == 0)
 			return (cmdtab[i].handler);
 	return (NULL);
+}
+
+void
+icb_cmd_beep(struct icb_session *is, char *arg)
+{
+	struct icb_group *ig = is->group;
+	struct icb_session *s;
+
+	if (strlen(arg) == 0) {
+		icb_error(is, "Invalid user");
+		return;
+	}
+
+	LIST_FOREACH(s, &ig->sess, entry) {
+		if (strcmp(s->nick, arg) == 0)
+			break;
+	}
+	if (s == NULL) {
+		icb_status(is, STATUS_NOTIFY, "%s is not signed on", arg);
+		return;
+	}
+
+	if (ISSETF(s->flags, ICB_SF_NOBEEP | ICB_SF_NOBEEP2)) {
+		icb_error(is, "User has nobeep enabled");
+		if (ISSETF(s->flags, ICB_SF_NOBEEP2))
+			icb_status(s, STATUS_NOBEEP,
+			    "%s attempted to beep you", is->nick);
+		return;
+	}
+
+	icb_sendfmt(s, "%c%s", ICB_M_BEEP, is->nick);
 }
 
 void
@@ -185,6 +220,40 @@ icb_cmd_name(struct icb_session *is, char *arg)
 	icb_status_group(ig, NULL, STATUS_NAME,
 	    "%s changed nickname to %s", is->nick, arg);
 	strlcpy(is->nick, arg, sizeof is->nick);
+}
+
+void
+icb_cmd_nobeep(struct icb_session *is, char *arg)
+{
+	if (strlen(arg) == 0) {
+		/* fail if we have verbose turned on */
+		if (ISSETF(is->flags, ICB_SF_NOBEEP2)) {
+			icb_error(is, "Can't toggle your nobeep status");
+			return;
+		}
+		/* otherwise toggle the status */
+		if (ISSETF(is->flags, ICB_SF_NOBEEP))
+			CLRF(is->flags, ICB_SF_NOBEEP);
+		else
+			SETF(is->flags, ICB_SF_NOBEEP);
+		icb_status(is, STATUS_NOBEEP, "No-Beep %s",
+		    ISSETF(is->flags, ICB_SF_NOBEEP) ? "on" : "off");
+		return;
+	}
+
+	if (strcmp(arg, "on") == 0) {
+		SETF(is->flags, ICB_SF_NOBEEP);
+		CLRF(is->flags, ICB_SF_NOBEEP2); /* can't be on and verbose */
+		icb_status(is, STATUS_NOBEEP, "No-Beep on");
+	} else if (strcmp(arg, "verbose") == 0) {
+		SETF(is->flags, ICB_SF_NOBEEP2);
+		CLRF(is->flags, ICB_SF_NOBEEP); /* can't be on and verbose */
+		icb_status(is, STATUS_NOBEEP, "No-Beep on (verbose)");
+	} else if (strcmp(arg, "off") == 0) {
+		CLRF(is->flags, ICB_SF_NOBEEP | ICB_SF_NOBEEP2);
+		icb_status(is, STATUS_NOBEEP, "No-Beep off");
+	} else
+		icb_error(is, "Invalid nobeep mode");
 }
 
 void
