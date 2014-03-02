@@ -34,6 +34,7 @@ void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
 void   icb_login(struct icb_session *, char *, char *, char *);
 int    icb_dowho(struct icb_session *, struct icb_group *);
+int    icb_modpermit(struct icb_session *);
 char  *icb_nextfield(char **);
 
 /*
@@ -517,6 +518,23 @@ icb_ismod(struct icb_group *ig, struct icb_session *is)
 }
 
 /*
+ *  icb_modpermit: checks user against the moderators table if it has
+ *                 been populated
+ */
+int
+icb_modpermit(struct icb_session *is)
+{
+	extern char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
+	extern int modtabcnt;
+
+	if (modtabcnt == 0 ||
+	    bsearch(is->nick, modtab, modtabcnt, ICB_MAXNICKLEN,
+	    (int (*)(const void *, const void *))strcmp))
+		return (1);
+	return (0);
+}
+
+/*
  *  icb_pass: passes moderation of group "ig" from "from" to "to",
  *            returns -1 if "from" is not a moderator, 1 if passed
  *            to "to" and 0 otherwise (no moderator or passed to the
@@ -529,6 +547,8 @@ icb_pass(struct icb_group *ig, struct icb_session *from,
 	if (ig->mod && ig->mod != from)
 		return (-1);
 	if (!from && !to)
+		return (-1);
+	if (to && !icb_modpermit(to))
 		return (-1);
 	ig->mod = to;
 	if (to)

@@ -43,6 +43,8 @@
 
 extern char *__progname;
 
+char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
+int  modtabcnt;
 char srvname[MAXHOSTNAMELEN];
 int  creategroups;
 int  foreground;
@@ -56,6 +58,7 @@ void icbd_ioerr(struct bufferevent *, short, void *);
 void icbd_dispatch(struct bufferevent *, void *);
 void icbd_log(struct icb_session *, int, const char *, ...);
 void icbd_grplist(char *);
+void icbd_modtab(char *);
 void icbd_restrict(void);
 void icbd_write(struct icb_session *, char *, ssize_t);
 
@@ -70,7 +73,7 @@ main(int argc, char *argv[])
 	/* init group lists before calling icb_addgroup */
 	icb_init(&ic);
 
-	while ((ch = getopt(argc, argv, "46CdG:S:v")) != -1)
+	while ((ch = getopt(argc, argv, "46CdG:M:S:v")) != -1)
 		switch (ch) {
 		case '4':
 			inet4++;
@@ -86,6 +89,9 @@ main(int argc, char *argv[])
 			break;
 		case 'G':
 			icbd_grplist(optarg);
+			break;
+		case 'M':
+			icbd_modtab(optarg);
 			break;
 		case 'S':
 			strlcpy(srvname, optarg, sizeof srvname);
@@ -275,7 +281,7 @@ __dead void
 usage(void)
 {
 	(void)fprintf(stderr, "usage: %s [-46Cdv] [-G group1[,group2,...]] "
-	   "[-S name] [[addr][:port] ...]\n",  __progname);
+	   "[-M modtab]\n\t[-S name] [[addr][:port] ...]\n",  __progname);
 	exit(EX_USAGE);
 }
 
@@ -452,6 +458,43 @@ icbd_grplist(char *list)
 		s = ++s1;
 		s1 = s2 = NULL;
 	}
+}
+
+void
+icbd_modtab(char *mtab)
+{
+	FILE *fp;
+	char *buf, *lbuf;
+	size_t len;
+
+	if ((fp = fopen(mtab, "r")) == NULL)
+		err(EX_NOINPUT, "%s", mtab);
+
+	bzero(modtab, ICB_MTABLEN * ICB_MAXNICKLEN);
+	lbuf = NULL;
+	while ((buf = fgetln(fp, &len)) && modtabcnt < ICB_MTABLEN) {
+		if (buf[len - 1] == '\n')
+			buf[len - 1] = '\0';
+		else {
+			/* EOF without EOL, copy and add the NUL */
+			if ((lbuf = malloc(len + 1)) == NULL)
+				err(1, NULL);
+			memcpy(lbuf, buf, len);
+			lbuf[len] = '\0';
+			buf = lbuf;
+		}
+		while (buf[0] == ' ' || buf[0] == '\t')
+			buf++;
+		if (buf[0] == '#' || buf[0] == '\0')
+			continue;
+		strlcpy(modtab[modtabcnt++], buf, ICB_MAXNICKLEN);
+	}
+	free(lbuf);
+
+	qsort(modtab, modtabcnt, ICB_MAXNICKLEN,
+	    (int (*)(const void *, const void *))strcmp);
+
+	fclose(fp);
 }
 
 time_t

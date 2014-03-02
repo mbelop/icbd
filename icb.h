@@ -22,6 +22,7 @@
 #define ICB_MAXNICKLEN		 32
 #define ICB_MAXPASSLEN		 32
 #define ICB_MAXTOPICLEN		 160
+#define ICB_MTABLEN		 50 /* XXX */
 
 #define ICB_M_LOGIN		 'a'
 #define ICB_M_OPEN		 'b'
@@ -119,6 +120,7 @@ void icb_error(struct icb_session *, const char *, ...);
 void icb_init(struct icbd_callbacks *);
 void icb_input(struct icb_session *);
 int  icb_ismod(struct icb_group *, struct icb_session *);
+int  icb_modpermit(struct icb_session *);
 int  icb_pass(struct icb_group *, struct icb_session *, struct icb_session *);
 void icb_privmsg(struct icb_session *, char *, char *);
 void icb_remove(struct icb_session *, char *);
