@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2010 Mike Belopuhov
+ * Copyright (c) 2009, 2010, 2013 Mike Belopuhov
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -33,6 +33,7 @@ extern char srvname[MAXHOSTNAMELEN];
 void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
 void   icb_login(struct icb_session *, char *, char *, char *);
+int    icb_dowho(struct icb_session *, struct icb_group *);
 char  *icb_nextfield(char **);
 
 /*
@@ -198,7 +199,7 @@ icb_login(struct icb_session *is, char *group, char *nick, char *client)
 
 	/* notify user */
 	icb_status(is, STATUS_STATUS, "You are now in group %s%s", ig->name,
-	    icb_ismoder(ig, is) ? " as moderator" : "");
+	    icb_ismod(ig, is) ? " as moderator" : "");
 
 	/* send user a topic name */
 	if (strlen(ig->topic) > 0)
@@ -284,17 +285,24 @@ icb_cmdout(struct icb_session *is, int type, char *outmsg)
 	case CMDOUT_EC:
 		otype = "ec";
 		break;
-	case CMDOUT_WL:
-		otype = "wl";
-		break;
 	case CMDOUT_WG:
 		otype = "wg";
+		break;
+	case CMDOUT_WH:
+		otype = "wh";
+		break;
+	case CMDOUT_WL:
+		otype = "wl";
 		break;
 	default:
 		icb_log(is, LOG_ERR, "unknown cmdout type");
 		return;
 	}
-	icb_sendfmt(is, "%c%s%c%s", ICB_M_CMDOUT, otype, ICB_M_SEP, outmsg);
+	if (outmsg)
+		icb_sendfmt(is, "%c%s%c%s", ICB_M_CMDOUT, otype, ICB_M_SEP,
+		    outmsg);
+	else
+		icb_sendfmt(is, "%c%s", ICB_M_CMDOUT, otype);
 }
 
 /*
@@ -385,7 +393,7 @@ void
 icb_remove(struct icb_session *is, char *reason)
 {
 	if (is->group) {
-		if (icb_ismoder(is->group, is))
+		if (icb_ismod(is->group, is))
 			(void)icb_pass(is->group, is, NULL);
 		LIST_REMOVE(is, entry);
 		if (reason)
@@ -413,7 +421,7 @@ icb_addgroup(struct icb_session *is, char *name, char *mpass)
 	if (mpass)
 		strlcpy(ig->mpass, mpass, sizeof ig->mpass);
 	if (is)
-		ig->moder = is;
+		ig->mod = is;
 	LIST_INIT(&ig->sess);
 	LIST_INSERT_HEAD(&groups, ig, entry);
 	return (ig);
@@ -440,35 +448,70 @@ icb_delgroup(struct icb_group *ig)
 #endif
 
 /*
- *  icb_who: sends a list of users of the specified group (or the current
- *           one otherwise) in the "wl" format
+ *  icb_dowho: a helper function that sends out a group header as a command
+ *             output and user information in the "wl" format
+ */
+int
+icb_dowho(struct icb_session *is, struct icb_group *ig)
+{
+	char buf[ICB_MSGSIZE];
+	struct icb_session *s;
+	int nusers = 0;
+
+	icb_cmdout(is, CMDOUT_CO, " ");
+	snprintf(buf, sizeof buf, "Group: %-8s (%cvl) Mod: %-13s Topic: %s",
+	    ig->name, ig->mod ? 'm' : 'p', ig->mod ? ig->mod->nick : "(None)",
+	    strlen(ig->topic) > 0 ? ig->topic : "(None)");
+	icb_cmdout(is, CMDOUT_CO, buf);
+	LIST_FOREACH(s, &ig->sess, entry) {
+		(void)snprintf(buf, sizeof buf,
+		    "%c%c%s%c%lld%c0%c%lld%c%s%c%s%c%s",
+		    icb_ismod(ig, s) ? 'm' : ' ', ICB_M_SEP,
+		    s->nick, ICB_M_SEP, getmonotime() - s->last,
+		    ICB_M_SEP, ICB_M_SEP, s->login, ICB_M_SEP,
+		    s->client, ICB_M_SEP, s->host, ICB_M_SEP, " ");
+		icb_cmdout(is, CMDOUT_WL, buf);
+		nusers++;
+	}
+	return (nusers);
+}
+
+/*
+ *  icb_who: sends a list of users of either the specified group or all
+ *           groups found on the server
  */
 void
 icb_who(struct icb_session *is, struct icb_group *ig)
 {
 	char buf[ICB_MSGSIZE];
-	struct icb_session *s;
+	struct icb_group *g;
 
-	if (!ig)
-		ig = is->group;
-	LIST_FOREACH(s, &ig->sess, entry) {
-		(void)snprintf(buf, sizeof buf,
-		    "%c%c%s%c%lld%c0%c%lld%c%s%c%s%c%s",
-		    icb_ismoder(ig, s) ? '*' : ' ', ICB_M_SEP,
-		    s->nick, ICB_M_SEP, getmonotime() - s->last,
-		    ICB_M_SEP, ICB_M_SEP, s->login, ICB_M_SEP,
-		    s->client, ICB_M_SEP, s->host, ICB_M_SEP, " ");
-		icb_cmdout(is, CMDOUT_WL, buf);
-	}
+	if (!ig) {
+		int nusers = 0, ngroups = 0;
+
+		LIST_FOREACH(g, &groups, entry) {
+			nusers += icb_dowho(is, g);
+			ngroups++;
+		}
+		if (nusers > 0) {
+			(void)snprintf(buf, sizeof buf,
+			    "Total: %d %s in %d %s",
+			    nusers, nusers > 1 ? "users" : "user",
+			    ngroups, ngroups > 1 ? "groups" : "group");
+		} else
+			(void)snprintf(buf, sizeof buf, "No users found.");
+		icb_cmdout(is, CMDOUT_CO, buf);
+	} else
+		(void)icb_dowho(is, ig);
 }
 
 /*
- *  icb_ismoder: checks whether group is moderated by "is"
+ *  icb_ismod: checks whether group is moderated by "is"
  */
 int
-icb_ismoder(struct icb_group *ig, struct icb_session *is)
+icb_ismod(struct icb_group *ig, struct icb_session *is)
 {
-	if (ig->moder && ig->moder == is)
+	if (ig->mod && ig->mod == is)
 		return (1);
 	return (0);
 }
@@ -483,11 +526,11 @@ int
 icb_pass(struct icb_group *ig, struct icb_session *from,
     struct icb_session *to)
 {
-	if (ig->moder && ig->moder != from)
+	if (ig->mod && ig->mod != from)
 		return (-1);
 	if (!from && !to)
 		return (-1);
-	ig->moder = to;
+	ig->mod = to;
 	if (to)
 		icb_status(to, STATUS_NOTIFY, "%s just passed you moderation"
 		    " of %s", from ? from->nick : "server", ig->name);
@@ -497,8 +540,8 @@ icb_pass(struct icb_group *ig, struct icb_session *from,
 }
 
 /*
- *  icb_nextfield: advances through a given buffer returning pointer to
- *                 the beginning of the icb field or an empty string otherwise
+ *  icb_nextfield: advances through a given buffer returning pointer to the
+ *                 beginning of the icb field or an empty string otherwise
  */
 char *
 icb_nextfield(char **buf)

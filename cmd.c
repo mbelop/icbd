@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2010 Mike Belopuhov
+ * Copyright (c) 2009, 2010, 2013 Mike Belopuhov
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -112,7 +112,7 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 
 	/* to boot or not to boot, that is the question */
 	ig = is->group;
-	if (!icb_ismoder(ig, is)) {
+	if (!icb_ismod(ig, is)) {
 		icb_status(is, STATUS_NOTIFY, "Sorry, booting is a privilege "
 		    "you don't possess");
 		return;
@@ -179,7 +179,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 
 	if (is->group) {
 		changing = 1;
-		if (icb_ismoder(is->group, is))
+		if (icb_ismod(is->group, is))
 			(void)icb_pass(is->group, is, NULL);
 		LIST_REMOVE(is, entry);
 		icb_status_group(is->group, NULL, STATUS_DEPART,
@@ -195,7 +195,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 
 	/* acknowledge successful join */
 	icb_status(is, STATUS_STATUS, "You are now in group %s%s", ig->name,
-	    icb_ismoder(ig, is) ? " as moderator" : "");
+	    icb_ismod(ig, is) ? " as moderator" : "");
 
 	/* send user a topic name */
 	if (strlen(ig->topic) > 0)
@@ -284,9 +284,9 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
 
-	if (!ig->moder)		/* if there is no mod, let anyone grab it */
-		(void)icb_pass(ig, ig->moder, is);
-	else if (icb_ismoder(ig, is)) {
+	if (!ig->mod)		/* if there is no mod, let anyone grab it */
+		(void)icb_pass(ig, ig->mod, is);
+	else if (icb_ismod(ig, is)) {
 		LIST_FOREACH(s, &ig->sess, entry) {
 			if (strcmp(s->nick, arg) == 0)
 				break;
@@ -295,7 +295,7 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 			icb_status(is, STATUS_NOTIFY, "No such user");
 			return;
 		}
-		(void)icb_pass(ig, ig->moder, s);
+		(void)icb_pass(ig, ig->mod, s);
 	}
 }
 
@@ -311,7 +311,7 @@ icb_cmd_topic(struct icb_session *is, char *arg)
 		else
 			icb_status(is, STATUS_TOPIC, "The topic is not set.");
 	} else {		/* setting the topic */
-		if (!icb_ismoder(ig, is)) {
+		if (!icb_ismod(ig, is)) {
 			icb_status(is, STATUS_NOTIFY, "Setting the topic is "
 			    "only for moderators.");
 			return;
@@ -323,7 +323,20 @@ icb_cmd_topic(struct icb_session *is, char *arg)
 }
 
 void
-icb_cmd_who(struct icb_session *is, char *arg __attribute__((unused)))
+icb_cmd_who(struct icb_session *is, char *arg)
 {
-	icb_who(is, NULL);
+	struct icb_group *ig;
+
+	if (strlen(arg) == 0)
+		return icb_who(is, NULL);
+
+	LIST_FOREACH(ig, &groups, entry) {
+		if (strcmp(ig->name, arg) == 0)
+			break;
+	}
+	if (ig == NULL) {
+		icb_error(is, "The group %s doesn't exist.", arg);
+		return;
+	}
+	icb_who(is, ig);
 }

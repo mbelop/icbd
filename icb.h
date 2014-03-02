@@ -49,8 +49,9 @@ enum {
 enum {
 	 CMDOUT_CO,
 	 CMDOUT_EC,
-	 CMDOUT_WL,
 	 CMDOUT_WG,
+	 CMDOUT_WH,
+	 CMDOUT_WL,
 };
 #define ICB_M_PROTO		 'j'
 #define ICB_M_BEEP		 'k'
@@ -92,7 +93,7 @@ struct icb_group {
 	char			 topic[ICB_MAXTOPICLEN];
 	LIST_ENTRY(icb_group)	 entry;
 	LIST_HEAD(, icb_session) sess;
-	struct icb_session	*moder;
+	struct icb_session	*mod;
 };
 
 LIST_HEAD(icb_grlist, icb_group) groups;
@@ -117,7 +118,7 @@ void icb_delgroup(struct icb_group *);
 void icb_error(struct icb_session *, const char *, ...);
 void icb_init(struct icbd_callbacks *);
 void icb_input(struct icb_session *);
-int  icb_ismoder(struct icb_group *, struct icb_session *);
+int  icb_ismod(struct icb_group *, struct icb_session *);
 int  icb_pass(struct icb_group *, struct icb_session *, struct icb_session *);
 void icb_privmsg(struct icb_session *, char *, char *);
 void icb_remove(struct icb_session *, char *);
