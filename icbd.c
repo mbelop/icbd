@@ -395,10 +395,8 @@ icbd_restrict(void)
 	}
 
 	if (setusercontext(NULL, pw, pw->pw_uid,
-	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0) {
-		syslog(LOG_ERR, "%s: %m", pw->pw_name);
+	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
 		exit(EX_NOPERM);
-	}
 
 	if (stat(pw->pw_dir, &sb) == -1) {
 		syslog(LOG_ERR, "%s: %m", pw->pw_name);

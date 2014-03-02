@@ -68,15 +68,16 @@ icbd_dns_init(void)
 		syslog(LOG_ERR, "No passwd entry for %s", ICBD_USER);
 		exit(EX_NOUSER);
 	}
+
 	if (setusercontext(NULL, pw, pw->pw_uid,
-	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0) {
-		syslog(LOG_ERR, "%s:%m", pw->pw_name);
+	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
 		exit(EX_NOPERM);
-	}
+
 	if (setuid(pw->pw_uid) < 0) {
-		syslog(LOG_ERR, "%d:%m", pw->pw_uid);
+		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
 		exit(EX_NOPERM);
 	}
+
 	if (chdir("/") < 0) {
 		syslog(LOG_ERR, "chdir: %m");
 		exit(EX_UNAVAILABLE);
