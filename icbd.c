@@ -108,7 +108,7 @@ main(int argc, char *argv[])
 		argc++;
 
 	if (inet4 && inet6)
-		errx(EX_CONFIG, "Can't specify both -4 and -6");
+		errx(EX_USAGE, "Can't specify both -4 and -6");
 
 	tzset();
 	(void)setlocale(LC_ALL, "C");
