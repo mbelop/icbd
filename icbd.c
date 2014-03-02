@@ -174,6 +174,14 @@ main(int argc, char *argv[])
 				continue;
 			}
 
+			if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, &on,
+			    sizeof on) < 0) {
+				cause = "SO_KEEPALIVE";
+				save_errno = errno;
+				(void)close(s);
+				continue;
+			}
+
 			if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
 			    sizeof on) < 0) {
 				cause = "SO_REUSEADDR";
