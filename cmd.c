@@ -287,6 +287,11 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 	if (!ig->mod)		/* if there is no mod, let anyone grab it */
 		(void)icb_pass(ig, ig->mod, is);
 	else if (icb_ismod(ig, is)) {
+		if (strlen(arg) == 0) {
+			/* no argument: relinquish moderator */
+			(void)icb_pass(ig, ig->mod, NULL);
+			return;
+		}
 		LIST_FOREACH(s, &ig->sess, entry) {
 			if (strcmp(s->nick, arg) == 0)
 				break;
