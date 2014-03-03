@@ -561,19 +561,25 @@ icb_pass(struct icb_group *ig, struct icb_session *from,
 
 /*
  *  icb_nextfield: advances through a given buffer returning pointer to the
- *                 beginning of the icb field or an empty string otherwise
+ *                 beginning of the icb field or an empty string otherwise;
+ *                 cleans up trailing spaces
  */
 char *
 icb_nextfield(char **buf)
 {
 	char *start = *buf;
+	char *end = NULL;
 
 	while (*buf && **buf != '\0' && **buf != ICB_M_SEP)
 		(*buf)++;
 	if (*buf && **buf == ICB_M_SEP) {
 		**buf = '\0';
+		end = *buf;
 		(*buf)++;
-	}
+	} else
+		end = *buf;
+	while (end && *(--end) == ' ' && end > start)
+		*end = '\0';
 	return (start);
 }
 
