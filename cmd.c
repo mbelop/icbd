@@ -284,9 +284,10 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
 
-	if (!ig->mod)		/* if there is no mod, let anyone grab it */
-		(void)icb_pass(ig, ig->mod, is);
-	else if (icb_ismod(ig, is)) {
+	if (!ig->mod) {		/* if there is no mod, let anyone grab it */
+		if (icb_pass(ig, ig->mod, is) < 0)
+			icb_error(is, "Acquiring group moderation failed.");
+	} else if (icb_ismod(ig, is)) {
 		if (strlen(arg) == 0) {
 			/* no argument: relinquish moderator */
 			(void)icb_pass(ig, ig->mod, NULL);
@@ -300,7 +301,8 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 			icb_status(is, STATUS_NOTIFY, "No such user");
 			return;
 		}
-		(void)icb_pass(ig, ig->mod, s);
+		if (icb_pass(ig, ig->mod, s) < 0)
+			icb_error(s, "Acquiring group moderation failed.");
 	}
 }
 
