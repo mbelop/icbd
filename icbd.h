@@ -23,7 +23,8 @@
 extern int verbose;
 
 /* icbd.c */
-time_t getmonotime(void);
+inline struct icb_session *icbd_session_lookup(uint64_t);
+time_t	getmonotime(void);
 
 /* dns.c */
 struct sockaddr_storage;

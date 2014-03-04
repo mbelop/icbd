@@ -19,6 +19,7 @@
 #include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/tree.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -43,6 +44,7 @@
 
 extern char *__progname;
 
+uint64_t sessionid;
 char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
 int  modtabcnt;
 char srvname[MAXHOSTNAMELEN];
@@ -62,6 +64,12 @@ void icbd_modtab(char *);
 void icbd_restrict(void);
 void icbd_write(struct icb_session *, char *, ssize_t);
 
+static inline int icbd_session_cmp(struct icb_session *, struct icb_session *);
+
+RB_HEAD(icbd_sessions, icb_session) icbd_sessions;
+RB_PROTOTYPE(icbd_sessions, icb_session, node, icbd_session_cmp);
+RB_GENERATE(icbd_sessions, icb_session, node, icbd_session_cmp);
+
 int
 main(int argc, char *argv[])
 {
@@ -69,6 +77,8 @@ main(int argc, char *argv[])
 	const char *cause = NULL;
 	int ch, nsocks = 0, save_errno = 0;
 	int inet4 = 0, inet6 = 0;
+
+	RB_INIT(&icbd_sessions);
 
 	/* init group lists before calling icb_addgroup */
 	icb_init(&ic);
@@ -233,6 +243,25 @@ icbd_dns(int fd, short event, void *arg)
 		syslog(LOG_DEBUG, "icbd_dns: resolved %s", is->host);
 }
 
+static inline int
+icbd_session_cmp(struct icb_session *a, struct icb_session *b)
+{
+	if (a->id > b->id)
+		return (1);
+	if (a->id < b->id)
+		return (-1);
+	return (0);
+}
+
+inline struct icb_session *
+icbd_session_lookup(uint64_t sid)
+{
+	struct icb_session key;
+
+	key.id = sid;
+	return (RB_FIND(icbd_sessions, &icbd_sessions, &key));
+}
+
 void
 icbd_accept(int fd, short event __attribute__((__unused__)),
     void *arg __attribute__((__unused__)))
@@ -269,6 +298,9 @@ icbd_accept(int fd, short event __attribute__((__unused__)),
 		free(is);
 		return;
 	}
+
+	is->id = sessionid++;
+	RB_INSERT(icbd_sessions, &icbd_sessions, is);
 
 	/* save host information */
 	getpeerinfo(is);
@@ -353,6 +385,7 @@ icbd_drop(struct icb_session *is, char *reason)
 	(void)evbuffer_write(EVBUFFER_OUTPUT(is->bev), EVBUFFER_FD(is->bev));
 	(void)close(EVBUFFER_FD(is->bev));
 	bufferevent_free(is->bev);
+	RB_REMOVE(icbd_sessions, &icbd_sessions, is);
 	free(is);
 }
 

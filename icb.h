@@ -15,6 +15,7 @@
  */
 
 #include <sys/queue.h>
+#include <sys/tree.h>
 
 #define ICB_MSGSIZE		 256
 
@@ -65,12 +66,12 @@ enum {
 struct icb_group;
 
 struct icb_session {
+	uint64_t		 id;
 	char			 nick[ICB_MAXNICKLEN];
 	char			 client[ICB_MAXNICKLEN];
 	char			 host[MAXHOSTNAMELEN];
 	char			 buffer[ICB_MSGSIZE+1];
 	struct event		 ev;
-	LIST_ENTRY(icb_session)	 entry;
 	struct bufferevent	*bev;
 	struct icb_group	*group;
 	size_t			 length;
@@ -86,6 +87,12 @@ struct icb_session {
 #define ICB_SF_NOGROUP		 0x08
 #define ICB_SF_NOBEEP		 0x10
 #define ICB_SF_NOBEEP2		 0x20
+
+	/* session tree */
+	RB_ENTRY(icb_session)	 node;
+
+	/* in-group linkage */
+	LIST_ENTRY(icb_session)	 entry;
 };
 
 struct icb_group {
