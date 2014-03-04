@@ -21,6 +21,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <vis.h>
 #include <event.h>
 
 #include "icb.h"
@@ -78,18 +79,21 @@ icb_cmd_beep(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
+	char whom[ICB_MAXNICKLEN];
 
 	if (strlen(arg) == 0) {
 		icb_error(is, "Invalid user");
 		return;
 	}
 
+	icb_vis(whom, arg, ICB_MAXNICKLEN);
+
 	LIST_FOREACH(s, &ig->sess, entry) {
-		if (strcmp(s->nick, arg) == 0)
+		if (strcmp(s->nick, whom) == 0)
 			break;
 	}
 	if (s == NULL) {
-		icb_status(is, STATUS_NOTIFY, "%s is not signed on", arg);
+		icb_status(is, STATUS_NOTIFY, "%s is not signed on", whom);
 		return;
 	}
 
@@ -109,6 +113,7 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig;
 	struct icb_session *s;
+	char whom[ICB_MAXNICKLEN];
 
 	/* to boot or not to boot, that is the question */
 	ig = is->group;
@@ -118,9 +123,16 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 		return;
 	}
 
+	if (strlen(whom) == 0) {
+		icb_error(is, "Invalid user");
+		return;
+	}
+
+	icb_vis(whom, arg, ICB_MAXNICKLEN);
+
 	/* who would be a target then? */
 	LIST_FOREACH(s, &ig->sess, entry) {
-		if (strcmp(s->nick, arg) == 0)
+		if (strcmp(s->nick, whom) == 0)
 			break;
 	}
 	if (s == NULL) {
@@ -139,6 +151,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig;
 	struct icb_session *s;
+	char group[ICB_MAXGRPLEN];
 	int changing = 0;
 
 	if (strlen(arg) == 0) {
@@ -146,8 +159,10 @@ icb_cmd_change(struct icb_session *is, char *arg)
 		return;
 	}
 
+	icb_vis(group, arg, ICB_MAXGRPLEN);
+
 	LIST_FOREACH(ig, &groups, entry) {
-		if (strcmp(ig->name, arg) == 0)
+		if (strcmp(ig->name, group) == 0)
 			break;
 	}
 	if (ig == NULL) {
@@ -155,12 +170,12 @@ icb_cmd_change(struct icb_session *is, char *arg)
 			icb_error(is, "Invalid group");
 			return;
 		} else {
-			if ((ig = icb_addgroup(is, arg, NULL)) == NULL) {
+			if ((ig = icb_addgroup(is, group, NULL)) == NULL) {
 				icb_error(is, "Can't create group");
 				return;
 			}
 			icb_log(NULL, LOG_DEBUG, "%s created group %s",
-			    is->nick, arg);
+			    is->nick, group);
 		}
 	}
 
@@ -207,6 +222,7 @@ icb_cmd_name(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
+	char nick[ICB_MAXNICKLEN];
 
 	if (strlen(arg) == 0) {
 		icb_status(is, STATUS_NAME, "Your nickname is %s",
@@ -220,15 +236,16 @@ icb_cmd_name(struct icb_session *is, char *arg)
 	/* sanitize user input */
 	if (strlen(arg) > ICB_MAXNICKLEN)
 		arg[ICB_MAXNICKLEN - 1] = '\0';
+	icb_vis(nick, arg, ICB_MAXNICKLEN);
 	LIST_FOREACH(s, &ig->sess, entry) {
-		if (strcmp(s->nick, arg) == 0) {
+		if (strcmp(s->nick, nick) == 0) {
 			icb_error(is, "Nick is already in use");
 			return;
 		}
 	}
 	icb_status_group(ig, NULL, STATUS_NAME,
-	    "%s changed nickname to %s", is->nick, arg);
-	strlcpy(is->nick, arg, sizeof is->nick);
+	    "%s changed nickname to %s", is->nick, nick);
+	strlcpy(is->nick, nick, sizeof is->nick);
 }
 
 void
@@ -283,6 +300,7 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
+	char whom[ICB_MAXNICKLEN];
 
 	if (!ig->mod) {		/* if there is no mod, let anyone grab it */
 		if (icb_pass(ig, ig->mod, is) < 0)
@@ -293,8 +311,9 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 			(void)icb_pass(ig, ig->mod, NULL);
 			return;
 		}
+		icb_vis(whom, arg, ICB_MAXNICKLEN);
 		LIST_FOREACH(s, &ig->sess, entry) {
-			if (strcmp(s->nick, arg) == 0)
+			if (strcmp(s->nick, whom) == 0)
 				break;
 		}
 		if (s == NULL) {
@@ -310,6 +329,7 @@ void
 icb_cmd_topic(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig = is->group;
+	char topic[ICB_MAXTOPICLEN];
 
 	if (strlen(arg) == 0) {	/* querying the topic */
 		if (strlen(ig->topic) > 0)
@@ -323,7 +343,8 @@ icb_cmd_topic(struct icb_session *is, char *arg)
 			    "only for moderators.");
 			return;
 		}
-		strlcpy(ig->topic, arg, sizeof ig->topic);
+		icb_vis(topic, arg, ICB_MAXTOPICLEN);
+		strlcpy(ig->topic, topic, sizeof ig->topic);
 		icb_status_group(ig, NULL, STATUS_TOPIC,
 		    "%s changed the topic to \"%s\"", is->nick, ig->topic);
 	}
@@ -333,16 +354,18 @@ void
 icb_cmd_who(struct icb_session *is, char *arg)
 {
 	struct icb_group *ig;
+	char group[ICB_MAXGRPLEN];
 
 	if (strlen(arg) == 0)
 		return icb_who(is, NULL);
 
+	icb_vis(group, arg, ICB_MAXGRPLEN);
 	LIST_FOREACH(ig, &groups, entry) {
-		if (strcmp(ig->name, arg) == 0)
+		if (strcmp(ig->name, group) == 0)
 			break;
 	}
 	if (ig == NULL) {
-		icb_error(is, "The group %s doesn't exist.", arg);
+		icb_error(is, "The group %s doesn't exist.", group);
 		return;
 	}
 	icb_who(is, ig);

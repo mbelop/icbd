@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Mike Belopuhov
+ * Copyright (c) 2014 Mike Belopuhov
  * Copyright (c) 2009 Michael Shalayeff
  * All rights reserved.
  *
@@ -38,7 +38,6 @@
 void dns_dispatch(int, short, void *);
 void dns_done(int, short, void *);
 int dns_pipe;
-
 
 struct icbd_dnsquery {
 	uint64_t			sid;
