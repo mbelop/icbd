@@ -174,14 +174,6 @@ main(int argc, char *argv[])
 				continue;
 			}
 
-			if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, &on,
-			    sizeof on) < 0) {
-				cause = "SO_KEEPALIVE";
-				save_errno = errno;
-				(void)close(s);
-				continue;
-			}
-
 			if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on,
 			    sizeof on) < 0) {
 				cause = "SO_REUSEADDR";
@@ -260,7 +252,7 @@ icbd_accept(int fd, short event __attribute__((__unused__)),
 	struct sockaddr_storage ss;
 	struct icb_session *is;
 	socklen_t ss_len = sizeof ss;
-	int s, tos = IPTOS_LOWDELAY;
+	int s, on = 1, tos = IPTOS_LOWDELAY;
 
 	ss.ss_len = ss_len;
 	if ((s = accept(fd, (struct sockaddr *)&ss, &ss_len)) < 0) {
@@ -270,6 +262,8 @@ icbd_accept(int fd, short event __attribute__((__unused__)),
 	if (ss.ss_family == AF_INET)
 		if (setsockopt(s, IPPROTO_IP, IP_TOS, &tos, sizeof tos) < 0)
 			syslog(LOG_WARNING, "IP_TOS: %m");
+	if (setsockopt(s, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof on) < 0)
+		syslog(LOG_WARNING, "SO_KEEPALIVE: %m");
 	if ((is = calloc(1, sizeof *is)) == NULL) {
 		syslog(LOG_ERR, "calloc: %m");
 		(void)close(s);
