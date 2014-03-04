@@ -253,13 +253,25 @@ icb_privmsg(struct icb_session *is, char *to, char *msg)
 
 	icb_vis(whom, to, ICB_MAXNICKLEN, VIS_SP);
 
+	/* try home group first */
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (strcmp(s->nick, whom) == 0)
 			break;
 	}
 	if (!s) {
-		icb_error(is, "No such user %s", whom);
-		return;
+		/* try all groups until the first match */
+		LIST_FOREACH(ig, &groups, entry) {
+			LIST_FOREACH(s, &ig->sess, entry) {
+				if (strcmp(s->nick, whom) == 0)
+					break;
+			}
+			if (s)
+				break;
+		}
+		if (!s) {
+			icb_error(is, "No such user %s", whom);
+			return;
+		}
 	}
 	icb_sendfmt(s, "%c%s%c%s", ICB_M_PERSONAL, is->nick, ICB_M_SEP, msg);
 }
