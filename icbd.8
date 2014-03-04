@@ -26,6 +26,7 @@
 .Oo
 .Fl G Ar group1 Ns Op , Ns Ar ...
 .Oc
+.Op Fl M Ar modtab
 .Op Fl S Ar name
 .Sm off
 .Oo
@@ -65,6 +66,12 @@ will run in the foreground and log to
 Instruct
 .Nm
 to create specified groups at startup.
+.It Fl M Ar modtab
+Specifies a moderator table that can be used to restrict users who
+can be granted with moderation of any group.
+.Ar modtab
+file contains one nick per line; empty lines and lines starting with
+a hash symbol are ignored.
 .It Fl S Ar name
 Set the server's name to
 .Ar name .
