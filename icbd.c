@@ -212,7 +212,7 @@ main(int argc, char *argv[])
 	}
 
 	/* start a dns resolver thread */
-	icbd_dns_init();
+	dns_init();
 
 	if (!foreground)
 		icbd_restrict();
@@ -224,23 +224,6 @@ main(int argc, char *argv[])
 	syslog(LOG_ERR, "event_dispatch: %m");
 
 	return (EX_UNAVAILABLE);
-}
-
-void
-icbd_dns(int fd, short event, void *arg)
-{
-	struct icb_session *is = arg;
-
-	if (event != EV_READ)
-		return;
-
-	if (read(fd, is->host, sizeof is->host) < 0)
-		syslog(LOG_ERR, "read: %m");
-
-	is->host[sizeof is->host - 1] = '\0';
-
-	if (verbose)
-		syslog(LOG_DEBUG, "icbd_dns: resolved %s", is->host);
 }
 
 static inline int
@@ -546,6 +529,8 @@ void
 getpeerinfo(struct icb_session *is)
 {
 	struct sockaddr_storage ss;
+	struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
 	socklen_t ss_len = sizeof ss;
 
 	bzero(&ss, sizeof ss);
@@ -556,13 +541,17 @@ getpeerinfo(struct icb_session *is)
 	is->port = 0;
 	switch (ss.ss_family) {
 	case AF_INET:
-		is->port = ntohs(((struct sockaddr_in *)&ss)->sin_port);
+		is->port = ntohs(sin->sin_port);
 		break;
 
 	case AF_INET6:
-		is->port = ntohs(((struct sockaddr_in6 *)&ss)->sin6_port);
+		is->port = ntohs(sin6->sin6_port);
 		break;
 	}
+
+	inet_ntop(ss.ss_family, ss.ss_family == AF_INET ?
+	    (void *)&sin->sin_addr : (void *)&sin6->sin6_addr,
+	    is->host, sizeof is->host);
 
 	dns_rresolv(is, &ss);
 }

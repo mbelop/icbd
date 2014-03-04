@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2013 Mike Belopuhov
  * Copyright (c) 2009 Michael Shalayeff
  * All rights reserved.
  *
@@ -22,6 +23,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <sysexits.h>
@@ -34,16 +36,26 @@
 #include "icbd.h"
 
 void dns_dispatch(int, short, void *);
+void dns_done(int, short, void *);
 int dns_pipe;
 
-int
-icbd_dns_init(void)
-{
-	struct event	ev;
-	int		pipe[2];
-	struct passwd	*pw;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipe) == -1) {
+struct icbd_dnsquery {
+	uint64_t			sid;
+	union {
+		struct sockaddr_storage	req;
+		char			rep[MAXHOSTNAMELEN];
+	} u;
+};
+
+int
+dns_init(void)
+{
+	static struct event ev;
+	struct passwd *pw;
+	int pipes[2];
+
+	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipes) == -1) {
 		syslog(LOG_ERR, "socketpair: %m");
 		exit(EX_OSERR);
 	}
@@ -56,13 +68,21 @@ icbd_dns_init(void)
 		break;
 
 	default:
-		close(pipe[1]);
-		dns_pipe = pipe[0];
+		close(pipes[1]);
+		dns_pipe = pipes[0];
+
+		/* event for the reply */
+		event_set(&ev, dns_pipe, EV_READ | EV_PERSIST,
+		    dns_done, NULL);
+		if (event_add(&ev, NULL) < 0) {
+			syslog(LOG_ERR, "event_add: %m");
+			exit (EX_UNAVAILABLE);
+		}
 		return (0);
 	}
 
 	setproctitle("dns resolver");
-	close(pipe[0]);
+	close(pipes[0]);
 
 	if ((pw = getpwnam(ICBD_USER)) == NULL) {
 		syslog(LOG_ERR, "No passwd entry for %s", ICBD_USER);
@@ -85,7 +105,8 @@ icbd_dns_init(void)
 
 	event_init();
 
-	event_set(&ev, pipe[1], EV_READ | EV_PERSIST, dns_dispatch, NULL);
+	/* event for the request */
+	event_set(&ev, pipes[1], EV_READ | EV_PERSIST, dns_dispatch, NULL);
 	if (event_add(&ev, NULL) < 0) {
 		syslog(LOG_ERR, "event_add: %m");
 		exit (EX_UNAVAILABLE);
@@ -95,55 +116,75 @@ icbd_dns_init(void)
 }
 
 void
-dns_dispatch(int fd, short event, void *arg)
+dns_dispatch(int fd, short event, void *arg __attribute__((unused)))
 {
 	char host[NI_MAXHOST];
-	struct sockaddr_storage ss;
-	struct sockaddr *sa = (struct sockaddr *)&ss;
-	int gerr, ss_len = sizeof ss;
+	struct sockaddr *sa;
+	struct icbd_dnsquery q;
+	int gerr;
 
 	arg = NULL;
 	if (event != EV_READ)
 		return;
 
-	if (read(fd, &ss, ss_len) != ss_len) {
+	if (read(fd, &q, sizeof q) != sizeof q) {
 		syslog(LOG_ERR, "dns read: %m");
 		exit(1);
 	}
 
+	sa = (struct sockaddr *)&q.u.req;
 	if ((gerr = getnameinfo(sa, sa->sa_len,
 	    host, sizeof host, NULL, 0, NI_NOFQDN))) {
 		syslog(LOG_ERR, "getnameinfo: %s", gai_strerror(gerr));
-		write(fd, host, sizeof host);
 		return;
 	}
 
 	if (verbose)
 		syslog(LOG_DEBUG, "dns_dispatch: resolved %s", host);
 
-	if (write(fd, host, sizeof host) != sizeof host)
+	memcpy(&q.u.rep, host, sizeof host);
+	if (write(fd, &q, sizeof q) != sizeof q)
 		syslog(LOG_ERR, "dns write: %m");
+}
+
+void
+dns_done(int fd, short event, void *arg __attribute__((unused)))
+{
+	struct icb_session *is;
+	struct icbd_dnsquery q;
+
+	if (event != EV_READ)
+		return;
+
+	if (read(fd, &q, sizeof q) != sizeof q) {
+		syslog(LOG_ERR, "read: %m");
+		return;
+	}
+
+	if ((is = icbd_session_lookup(q.sid)) == NULL) {
+		syslog(LOG_ERR, "failed to find session %llu", q.sid);
+		return;
+	}
+
+	memcpy(is->host, q.u.rep, MAXHOSTNAMELEN);
+	is->host[sizeof is->host - 1] = '\0';
+
+	if (verbose)
+		syslog(LOG_DEBUG, "icbd_dns: resolved %s", is->host);
 }
 
 int
 dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
 {
-	/* one-shot event for the reply */
-	event_set(&is->ev, dns_pipe, EV_READ, icbd_dns, is);
-	if (event_add(&is->ev, NULL) < 0) {
-		syslog(LOG_ERR, "event_add: %m");
-		exit (EX_UNAVAILABLE);
-	}
-
-	inet_ntop(ss->ss_family, ss->ss_family == AF_INET ?
-	    (void *)&((struct sockaddr_in *)ss)->sin_addr :
-	    (void *)&((struct sockaddr_in6 *)ss)->sin6_addr,
-	    is->host, sizeof is->host);
+	struct icbd_dnsquery q;
 
 	if (verbose)
 		syslog(LOG_DEBUG, "resolving: %s", is->host);
 
-	if (write(dns_pipe, ss, sizeof *ss) != sizeof *ss) {
+	memset(&q, 0, sizeof q);
+	q.sid = is->id;
+	memcpy(&q.u.req, ss, sizeof *ss);
+	if (write(dns_pipe, &q, sizeof q) != sizeof q) {
 		syslog(LOG_ERR, "write: %m");
 		exit (EX_OSERR);
 	}

@@ -28,6 +28,5 @@ time_t	getmonotime(void);
 
 /* dns.c */
 struct sockaddr_storage;
-int	icbd_dns_init(void);
-void	icbd_dns(int, short, void *);
+int	dns_init(void);
 int	dns_rresolv(struct icb_session *, struct sockaddr_storage *);
