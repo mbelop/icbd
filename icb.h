@@ -138,7 +138,7 @@ void		 icb_status(struct icb_session *, int, const char *, ...);
 void		 icb_status_group(struct icb_group *, struct icb_session *,
 		    int, const char *, ...);
 void		 icb_who(struct icb_session *, struct icb_group *);
-int		 icb_vis(char *, const char *, size_t);
+int		 icb_vis(char *, const char *, size_t, int);
 
 /* callbacks from icbd.c */
 void		(*icb_drop)(struct icb_session *, char *);

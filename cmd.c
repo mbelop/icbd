@@ -86,7 +86,7 @@ icb_cmd_beep(struct icb_session *is, char *arg)
 		return;
 	}
 
-	icb_vis(whom, arg, ICB_MAXNICKLEN);
+	icb_vis(whom, arg, ICB_MAXNICKLEN, VIS_SP);
 
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (strcmp(s->nick, whom) == 0)
@@ -128,7 +128,7 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 		return;
 	}
 
-	icb_vis(whom, arg, ICB_MAXNICKLEN);
+	icb_vis(whom, arg, ICB_MAXNICKLEN, VIS_SP);
 
 	/* who would be a target then? */
 	LIST_FOREACH(s, &ig->sess, entry) {
@@ -159,7 +159,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 		return;
 	}
 
-	icb_vis(group, arg, ICB_MAXGRPLEN);
+	icb_vis(group, arg, ICB_MAXGRPLEN, VIS_SP);
 
 	LIST_FOREACH(ig, &groups, entry) {
 		if (strcmp(ig->name, group) == 0)
@@ -236,7 +236,7 @@ icb_cmd_name(struct icb_session *is, char *arg)
 	/* sanitize user input */
 	if (strlen(arg) > ICB_MAXNICKLEN)
 		arg[ICB_MAXNICKLEN - 1] = '\0';
-	icb_vis(nick, arg, ICB_MAXNICKLEN);
+	icb_vis(nick, arg, ICB_MAXNICKLEN, VIS_SP);
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (strcmp(s->nick, nick) == 0) {
 			icb_error(is, "Nick is already in use");
@@ -311,7 +311,7 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 			(void)icb_pass(ig, ig->mod, NULL);
 			return;
 		}
-		icb_vis(whom, arg, ICB_MAXNICKLEN);
+		icb_vis(whom, arg, ICB_MAXNICKLEN, VIS_SP);
 		LIST_FOREACH(s, &ig->sess, entry) {
 			if (strcmp(s->nick, whom) == 0)
 				break;
@@ -343,7 +343,7 @@ icb_cmd_topic(struct icb_session *is, char *arg)
 			    "only for moderators.");
 			return;
 		}
-		icb_vis(topic, arg, ICB_MAXTOPICLEN);
+		icb_vis(topic, arg, ICB_MAXTOPICLEN, 0);
 		strlcpy(ig->topic, topic, sizeof ig->topic);
 		icb_status_group(ig, NULL, STATUS_TOPIC,
 		    "%s changed the topic to \"%s\"", is->nick, ig->topic);
@@ -359,7 +359,7 @@ icb_cmd_who(struct icb_session *is, char *arg)
 	if (strlen(arg) == 0)
 		return icb_who(is, NULL);
 
-	icb_vis(group, arg, ICB_MAXGRPLEN);
+	icb_vis(group, arg, ICB_MAXGRPLEN, VIS_SP);
 	LIST_FOREACH(ig, &groups, entry) {
 		if (strcmp(ig->name, group) == 0)
 			break;

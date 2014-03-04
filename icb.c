@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <event.h>
+#include <vis.h>
 
 #include "icb.h"
 #include "icbd.h"
@@ -149,7 +150,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	char group[ICB_MAXGRPLEN];
 
 	if (!nick || strlen(nick) == 0 ||
-	    icb_vis(is->nick, nick, ICB_MAXNICKLEN)) {
+	    icb_vis(is->nick, nick, ICB_MAXNICKLEN, VIS_SP)) {
 		icb_error(is, "Invalid nick");
 		icb_drop(is, NULL);
 		return;
@@ -157,7 +158,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	if (!grp || strlen(grp) == 0)
 		strlcpy(group, defgrp, ICB_MAXGRPLEN);
 	else
-		icb_vis(group, grp, ICB_MAXNICKLEN);
+		icb_vis(group, grp, ICB_MAXNICKLEN, VIS_SP);
 	LIST_FOREACH(ig, &groups, entry) {
 		if (strcmp(ig->name, group) == 0)
 			break;
@@ -185,7 +186,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	}
 
 	if (client && strlen(client) > 0)
-		icb_vis(is->client, client, sizeof is->client);
+		icb_vis(is->client, client, sizeof is->client, VIS_SP);
 	strlcpy(is->nick, nick, sizeof is->nick);
 	is->group = ig;
 	is->login = time(NULL);
@@ -250,7 +251,7 @@ icb_privmsg(struct icb_session *is, char *to, char *msg)
 	struct icb_session *s;
 	char whom[ICB_MAXNICKLEN];
 
-	icb_vis(whom, to, ICB_MAXNICKLEN);
+	icb_vis(whom, to, ICB_MAXNICKLEN, VIS_SP);
 
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (strcmp(s->nick, whom) == 0)
@@ -272,7 +273,7 @@ icb_command(struct icb_session *is, char *cmd, char *arg)
 	void (*handler)(struct icb_session *, char *);
 	char command[32]; /* XXX */
 
-	icb_vis(command, cmd, sizeof command);
+	icb_vis(command, cmd, sizeof command, VIS_SP);
 
 	if ((handler = icb_cmd_lookup(command)) == NULL) {
 		icb_error(is, "Unsupported command: %s", command);
@@ -613,14 +614,16 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
  *  icb_vis: strnvis-like function that escapes percentages as well
  */
 int
-icb_vis(char *dst, const char *src, size_t dstsize)
+icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 {
 	int si = 0, di = 0, td;
 
 	while ((size_t)di < dstsize && src[si] != '\0') {
 		if (src[si] == '%')
 			dst[di++] = '%', dst[di] = '%';
-		else if (isgraph(src[si]))
+		else if (src[si] == ' ' && flags & VIS_SP)
+			dst[di] = '_';
+		else if (isgraph(src[si]) || src[si] == ' ')
 			dst[di] = src[si];
 		else {
 			td = snprintf(&dst[di], dstsize - di,
