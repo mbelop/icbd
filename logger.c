@@ -105,14 +105,14 @@ logger_init(void)
 		exit(EX_UNAVAILABLE);
 	}
 
-	if (setuid(pw->pw_uid) < 0) {
-		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
-		exit(EX_NOPERM);
-	}
-
 	if (chdir("/") < 0) {
 		syslog(LOG_ERR, "chdir: %m");
 		exit(EX_UNAVAILABLE);
+	}
+
+	if (setuid(pw->pw_uid) < 0) {
+		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
+		exit(EX_NOPERM);
 	}
 
 	event_init();

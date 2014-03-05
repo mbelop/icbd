@@ -89,6 +89,11 @@ dns_init(void)
 		exit(EX_NOUSER);
 	}
 
+	if (chdir("/") < 0) {
+		syslog(LOG_ERR, "chdir: %m");
+		exit(EX_UNAVAILABLE);
+	}
+
 	if (setusercontext(NULL, pw, pw->pw_uid,
 	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
 		exit(EX_NOPERM);
@@ -96,11 +101,6 @@ dns_init(void)
 	if (setuid(pw->pw_uid) < 0) {
 		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
 		exit(EX_NOPERM);
-	}
-
-	if (chdir("/") < 0) {
-		syslog(LOG_ERR, "chdir: %m");
-		exit(EX_UNAVAILABLE);
 	}
 
 	event_init();
