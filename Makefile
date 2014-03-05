@@ -3,7 +3,7 @@ BINDIR=		${PREFIX}/sbin
 MANDIR=		${PREFIX}/man/man
 
 PROG=		icbd
-SRCS=		cmd.c dns.c icb.c icbd.c
+SRCS=		cmd.c dns.c icb.c icbd.c logger.c
 MAN=		icbd.8
 
 CFLAGS+=	-W -Wall -Werror

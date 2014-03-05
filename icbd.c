@@ -211,6 +211,9 @@ main(int argc, char *argv[])
 		return (EX_UNAVAILABLE);
 	}
 
+	/* start the logger service */
+	logger_init();
+
 	/* start a dns resolver thread */
 	dns_init();
 

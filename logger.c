@@ -1,7 +1,6 @@
 /*
  * Copyright (c) 2014 Mike Belopuhov
  * Copyright (c) 2009 Michael Shalayeff
- * All rights reserved.
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,11 +18,13 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/uio.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <sysexits.h>
@@ -35,21 +36,19 @@
 #include "icb.h"
 #include "icbd.h"
 
-void dns_dispatch(int, short, void *);
-void dns_done(int, short, void *);
+void logger_dispatch(int, short, void *);
 
-int dns_pipe;
+int logger_pipe;
 
-struct icbd_dnsquery {
-	uint64_t			sid;
-	union {
-		struct sockaddr_storage	req;
-		char			rep[MAXHOSTNAMELEN];
-	} u;
+struct icbd_logentry {
+	time_t	timestamp;
+	char	group[ICB_MAXGRPLEN];
+	char	nick[ICB_MAXNICKLEN];
+	size_t	length;
 };
 
 int
-dns_init(void)
+logger_init(void)
 {
 	static struct event ev;
 	struct passwd *pw;
@@ -69,19 +68,11 @@ dns_init(void)
 
 	default:
 		close(pipes[1]);
-		dns_pipe = pipes[0];
-
-		/* event for the reply */
-		event_set(&ev, dns_pipe, EV_READ | EV_PERSIST,
-		    dns_done, NULL);
-		if (event_add(&ev, NULL) < 0) {
-			syslog(LOG_ERR, "event_add: %m");
-			exit (EX_UNAVAILABLE);
-		}
+		logger_pipe = pipes[0];
 		return (0);
 	}
 
-	setproctitle("dns resolver");
+	setproctitle("logger");
 	close(pipes[0]);
 
 	if ((pw = getpwnam(ICBD_USER)) == NULL) {
@@ -98,15 +89,15 @@ dns_init(void)
 		exit(EX_NOPERM);
 	}
 
-	if (chdir("/") < 0) {
+	if (chdir(pw->pw_dir) < 0) {
 		syslog(LOG_ERR, "chdir: %m");
 		exit(EX_UNAVAILABLE);
 	}
 
 	event_init();
 
-	/* event for the request */
-	event_set(&ev, pipes[1], EV_READ | EV_PERSIST, dns_dispatch, NULL);
+	/* event for message processing */
+	event_set(&ev, pipes[1], EV_READ | EV_PERSIST, logger_dispatch, NULL);
 	if (event_add(&ev, NULL) < 0) {
 		syslog(LOG_ERR, "event_add: %m");
 		exit (EX_UNAVAILABLE);
@@ -116,77 +107,55 @@ dns_init(void)
 }
 
 void
-dns_dispatch(int fd, short event, void *arg __attribute__((unused)))
+logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 {
-	char host[NI_MAXHOST];
-	struct sockaddr *sa;
-	struct icbd_dnsquery q;
-	int gerr;
+	char buf[512];
+	struct icbd_logentry e;
+	struct iovec iov[2];
 
 	if (event != EV_READ)
 		return;
 
-	if (read(fd, &q, sizeof q) != sizeof q) {
-		syslog(LOG_ERR, "dns read: %m");
+	bzero(&e, sizeof e);
+	iov[0].iov_base = &e;
+	iov[0].iov_len = sizeof e;
+
+	iov[1].iov_base = buf;
+	iov[1].iov_len = sizeof buf;
+
+	if (readv(fd, iov, 2) < (ssize_t)sizeof e) {
+		syslog(LOG_ERR, "logger read: %m");
 		exit(EX_DATAERR);
 	}
 
-	sa = (struct sockaddr *)&q.u.req;
-	if ((gerr = getnameinfo(sa, sa->sa_len,
-	    host, sizeof host, NULL, 0, NI_NOFQDN))) {
-		syslog(LOG_ERR, "getnameinfo: %s", gai_strerror(gerr));
-		return;
+	/* XXX */
+	if (iov[1].iov_len < e.length) {
+		syslog(LOG_ERR, "logger read %lu out of %lu",
+		    iov[1].iov_len, e.length);
 	}
 
-	if (verbose)
-		syslog(LOG_DEBUG, "dns_dispatch: resolved %s", host);
+	/* TODO: check time of the day and open the next file */
 
-	memcpy(&q.u.rep, host, sizeof host);
-	if (write(fd, &q, sizeof q) != sizeof q)
-		syslog(LOG_ERR, "dns write: %m");
+	fprintf(stderr, "%s@%s: %s\n", e.nick, e.group, buf);
 }
 
 void
-dns_done(int fd, short event, void *arg __attribute__((unused)))
+logger(time_t timestamp, char *group, char *nick, char *what)
 {
-	struct icb_session *is;
-	struct icbd_dnsquery q;
+	struct icbd_logentry e;
+	struct iovec iov[2];
 
-	if (event != EV_READ)
-		return;
+	e.timestamp = timestamp;
+	strlcpy(e.group, group, ICB_MAXGRPLEN);
+	strlcpy(e.nick, nick, ICB_MAXNICKLEN);
+	e.length = strlen(what) + 1;
 
-	if (read(fd, &q, sizeof q) != sizeof q) {
-		syslog(LOG_ERR, "read: %m");
-		return;
-	}
+	iov[0].iov_base = &e;
+	iov[0].iov_len = sizeof e;
 
-	if ((is = icbd_session_lookup(q.sid)) == NULL) {
-		syslog(LOG_ERR, "failed to find session %llu", q.sid);
-		return;
-	}
+	iov[1].iov_base = what;
+	iov[1].iov_len = e.length;
 
-	memcpy(is->host, q.u.rep, MAXHOSTNAMELEN);
-	is->host[sizeof is->host - 1] = '\0';
-
-	if (verbose)
-		syslog(LOG_DEBUG, "icbd_dns: resolved %s", is->host);
-}
-
-int
-dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
-{
-	struct icbd_dnsquery q;
-
-	if (verbose)
-		syslog(LOG_DEBUG, "resolving: %s", is->host);
-
-	memset(&q, 0, sizeof q);
-	q.sid = is->id;
-	memcpy(&q.u.req, ss, sizeof *ss);
-	if (write(dns_pipe, &q, sizeof q) != sizeof q) {
-		syslog(LOG_ERR, "write: %m");
-		exit (EX_OSERR);
-	}
-
-	return 0;
+	if (writev(logger_pipe, iov, 2) == -1)
+		syslog(LOG_ERR, "logger write: %m");
 }
