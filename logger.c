@@ -97,12 +97,17 @@ logger_init(void)
 	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
 		exit(EX_NOPERM);
 
+	if (chroot(pw->pw_dir) < 0) {
+		syslog(LOG_ERR, "%s: %m", pw->pw_dir);
+		exit(EX_UNAVAILABLE);
+	}
+
 	if (setuid(pw->pw_uid) < 0) {
 		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
 		exit(EX_NOPERM);
 	}
 
-	if (chdir(pw->pw_dir) < 0) {
+	if (chdir("/") < 0) {
 		syslog(LOG_ERR, "chdir: %m");
 		exit(EX_UNAVAILABLE);
 	}
