@@ -75,6 +75,7 @@ struct icb_session {
 	struct bufferevent	*bev;
 	struct icb_group	*group;
 	size_t			 length;
+	size_t			 rlen;
 	time_t			 login;
 	time_t			 last;
 	int			 port;

@@ -311,35 +311,37 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 {
 	struct icb_session *is = (struct icb_session *)arg;
 
-	if (is->length == 0) {
-		bzero(is->buffer, sizeof is->buffer);
-		/* read length */
-		(void)bufferevent_read(bev, is->buffer, 1);
-		/* we're about to read the whole packet */
-		is->length = (size_t)(unsigned char)is->buffer[0];
+	while (EVBUFFER_LENGTH(EVBUFFER_INPUT(bev)) > 0) {
 		if (is->length == 0) {
-			icbd_drop(is, "invalid packet");
-			return;
+			/* read length */
+			is->rlen = bufferevent_read(bev, is->buffer, 1);
+			is->length = (size_t)(unsigned char)is->buffer[0];
+			if (is->length == 0) {
+				icbd_drop(is, "invalid packet");
+				return;
+			}
 		}
-		if (EVBUFFER_LENGTH(EVBUFFER_INPUT(bev)) < is->length) {
-			/* set watermark to the expected length */
-			bufferevent_setwatermark(bev, EV_READ, is->length, 0);
-			return;
-		}
-	}
-	(void)bufferevent_read(bev, &is->buffer[1], is->length);
+		/* read as much as we can */
+		is->rlen += bufferevent_read(bev, &is->buffer[is->rlen],
+		    is->length);
 #ifdef DEBUG
-	{
-		int i;
+		{
+			int i;
 
-		printf("-> read from %s:%d:\n", is->host, is->port);
-		for (i = 0; i < (int)is->length + 1; i++)
-			printf(" %02x", (unsigned char)is->buffer[i]);
-		printf("\n");
-	}
+			printf("-> read %lu out of %lu from %s:%d:\n",
+			    is->rlen, is->length, is->host, is->port);
+			for (i = 0; i < (int)is->rlen; i++)
+				printf(" %02x", (unsigned char)is->buffer[i]);
+			printf("\n");
+		}
 #endif
-	icb_input(is);
-	is->length = 0;
+		/* see you next time around */
+		if (is->rlen < is->length)
+			return;
+		/* process the message in full */
+		icb_input(is);
+		is->rlen = is->length = 0;
+	}
 }
 
 void
@@ -351,7 +353,7 @@ icbd_write(struct icb_session *is, char *buf, ssize_t size)
 	{
 		int i;
 
-		printf("-> wrote to %s:%d:\n", is->host, is->port);
+		printf("-> wrote %lu to %s:%d:\n", size, is->host, is->port);
 		for (i = 0; i < size; i++)
 			printf(" %02x", (unsigned char)buf[i]);
 		printf("\n");
