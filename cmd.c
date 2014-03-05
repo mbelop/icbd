@@ -356,6 +356,14 @@ icb_cmd_who(struct icb_session *is, char *arg)
 	struct icb_group *ig;
 	char group[ICB_MAXGRPLEN];
 
+	while (strlen(arg) && arg[0] == '-') { /* ignore options, for now */
+		/* ircII "set SHOW_CHANNEL_NAMES ON" uses /w -s */
+		while(arg[0] != ' ' && arg[0] != 0)
+			arg++;
+		if(arg[0] == ' ')
+			arg++;
+	}
+
 	if (strlen(arg) == 0)
 		return icb_who(is, NULL);
 
