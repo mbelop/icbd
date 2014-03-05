@@ -169,8 +169,10 @@ logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 			fp = logfiles[i].fp;
 	if (!fp && (fp = logger_open(e.group)) == NULL)
 		return;
-
-	fprintf(fp, "%s<%s> %s\n", line_ts, e.nick, buf);
+	if (strlen(e.nick) == 0)
+		fprintf(fp, "%s%s\n", line_ts, buf);
+	else
+		fprintf(fp, "%s<%s> %s\n", line_ts, e.nick, buf);
 }
 
 FILE *

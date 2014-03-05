@@ -389,6 +389,7 @@ icb_status_group(struct icb_group *ig, struct icb_session *ex, int type,
 			continue;
 		icb_status(s, type, buf);
 	}
+	logger(ig->name, "", buf);
 	icb_log(NULL, LOG_DEBUG, "%s", buf);
 	va_end(ap);
 }
