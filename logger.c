@@ -18,6 +18,7 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <sys/uio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -26,6 +27,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <sysexits.h>
+#include <time.h>
 #include <login_cap.h>
 #include <event.h>
 #include <pwd.h>
@@ -34,6 +36,8 @@
 #include "icbd.h"
 
 void logger_dispatch(int, short, void *);
+void logger_tick(int, short, void *);
+void logger_set_ts(void);
 
 int logger_pipe;
 
@@ -42,6 +46,11 @@ struct icbd_logentry {
 	char	nick[ICB_MAXNICKLEN];
 	size_t	length;
 };
+
+char line_ts[sizeof("[12:34 ]")];
+
+struct event ev_tick;
+struct timeval tick;
 
 int
 logger_init(void)
@@ -99,6 +108,15 @@ logger_init(void)
 		exit (EX_UNAVAILABLE);
 	}
 
+	/* event for the tick */
+	tick.tv_sec = 60;
+	tick.tv_usec = 0;
+	evtimer_set(&ev_tick, logger_tick, NULL);
+	if (evtimer_add(&ev_tick, &tick) < 0) {
+		syslog(LOG_ERR, "evtimer_add: %m");
+		exit (EX_UNAVAILABLE);
+	}
+	logger_set_ts();
 	return event_dispatch();
 }
 
@@ -132,7 +150,7 @@ logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 
 	/* TODO: check time of the day and open the next file */
 
-	fprintf(stderr, "%s@%s: %s\n", e.nick, e.group, buf);
+	fprintf(stderr, "%s%s@%s: %s\n", line_ts, e.nick, e.group, buf);
 }
 
 void
@@ -153,4 +171,26 @@ logger(char *group, char *nick, char *what)
 
 	if (writev(logger_pipe, iov, 2) == -1)
 		syslog(LOG_ERR, "logger write: %m");
+}
+
+void
+logger_tick(int fd __attribute__((unused)), short event __attribute__((unused)),
+    void *arg __attribute__((unused)))
+{
+	logger_set_ts();
+	if (evtimer_add(&ev_tick, &tick) < 0) {
+		syslog(LOG_ERR, "evtimer_add: %m");
+		exit (EX_UNAVAILABLE);
+	}
+}
+void
+logger_set_ts(void)
+{
+	struct tm *tm;
+	time_t t;
+
+	t = time(NULL);
+	tm = gmtime(&t);
+	snprintf(line_ts, sizeof(line_ts), "[%02d:%02d] ", tm->tm_hour,
+	    tm->tm_min);
 }
