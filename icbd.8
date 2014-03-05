@@ -26,6 +26,7 @@
 .Oo
 .Fl G Ar group1 Ns Op , Ns Ar ...
 .Oc
+.Op Fl L Ar prefix
 .Op Fl M Ar modtab
 .Op Fl S Ar name
 .Sm off
@@ -66,6 +67,13 @@ will run in the foreground and log to
 Instruct
 .Nm
 to create specified groups at startup.
+.It Fl L Ar prefix
+Enables logging of all public messages in all groups and specifies a
+directory inside the chroot that is owned and is writable by the
+.Nm
+user.
+The server will create subdirectories matching those of the group names
+and place log files inside one file per month.
 .It Fl M Ar modtab
 Specifies a moderator table that can be used to restrict users who
 can be granted with moderation of any group.

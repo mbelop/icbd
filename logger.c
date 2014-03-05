@@ -59,6 +59,9 @@ char file_ts[sizeof "0000-00"];
 char line_ts[sizeof "[00:00] "];
 struct event ev_tick;
 
+extern char logprefix[MAXPATHLEN/2];
+extern int dologging;
+
 int
 logger_init(void)
 {
@@ -176,11 +179,12 @@ logger_open(char *group)
 	char path[MAXPATHLEN];
 	FILE *fp = NULL;
 
-	if (mkdir(group, 0755) < 0 && errno != EEXIST) {
+	snprintf(path, sizeof path, "%s/%s", logprefix, group);
+	if (mkdir(path, 0755) < 0 && errno != EEXIST) {
 		syslog(LOG_ERR, "%s: %m", group);
 		return (NULL);
 	}
-	snprintf(path, sizeof path, "%s/%s", group, file_ts);
+	snprintf(path, sizeof path, "%s/%s/%s", logprefix, group, file_ts);
 	if ((fp = fopen(path, "a")) == NULL) {
 		syslog(LOG_ERR, "%s: %m", path);
 		return (NULL);
@@ -198,6 +202,9 @@ logger(char *group, char *nick, char *what)
 {
 	struct icbd_logentry e;
 	struct iovec iov[2];
+
+	if (!dologging)
+		return;
 
 	strlcpy(e.group, group, ICB_MAXGRPLEN);
 	strlcpy(e.nick, nick, ICB_MAXNICKLEN);

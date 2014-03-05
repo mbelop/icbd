@@ -42,14 +42,14 @@
 #include "icb.h"
 #include "icbd.h"
 
-extern char *__progname;
-
 uint64_t sessionid;
 char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
 int  modtabcnt;
 char srvname[MAXHOSTNAMELEN];
 int  creategroups;
 int  foreground;
+char logprefix[MAXPATHLEN/2];
+int  dologging;
 int  verbose;
 
 void usage(void);
@@ -83,7 +83,7 @@ main(int argc, char *argv[])
 	/* init group lists before calling icb_addgroup */
 	icb_init(&ic);
 
-	while ((ch = getopt(argc, argv, "46CdG:M:S:v")) != -1)
+	while ((ch = getopt(argc, argv, "46CdG:M:L:S:v")) != -1)
 		switch (ch) {
 		case '4':
 			inet4++;
@@ -99,6 +99,10 @@ main(int argc, char *argv[])
 			break;
 		case 'G':
 			icbd_grplist(optarg);
+			break;
+		case 'L':
+			strlcpy(logprefix, optarg, sizeof logprefix);
+			dologging++;
 			break;
 		case 'M':
 			icbd_modtab(optarg);
@@ -300,8 +304,11 @@ icbd_accept(int fd, short event __attribute__((__unused__)),
 __dead void
 usage(void)
 {
+	extern char *__progname;
+
 	(void)fprintf(stderr, "usage: %s [-46Cdv] [-G group1[,group2,...]] "
-	   "[-M modtab]\n\t[-S name] [[addr][:port] ...]\n",  __progname);
+	   "[-L prefix] [-M modtab]\n\t[-S name] [[addr][:port] ...]\n",
+	    __progname);
 	exit(EX_USAGE);
 }
 
