@@ -17,6 +17,7 @@
 
 #include <sys/param.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -36,10 +37,9 @@
 #include "icbd.h"
 
 void logger_dispatch(int, short, void *);
+FILE *logger_open(char *);
 void logger_tick(int, short, void *);
-void logger_set_ts(void);
-
-int logger_pipe;
+void logger_setts(void);
 
 struct icbd_logentry {
 	char	group[ICB_MAXGRPLEN];
@@ -47,16 +47,24 @@ struct icbd_logentry {
 	size_t	length;
 };
 
-char line_ts[sizeof("[12:34 ]")];
+struct {
+	char	group[ICB_MAXGRPLEN];
+	FILE	*fp;
+} logfiles[10];
+int nlogfiles;
 
+int logger_pipe;
+
+char file_ts[sizeof "0000-00"];
+char line_ts[sizeof "[00:00] "];
 struct event ev_tick;
-struct timeval tick;
 
 int
 logger_init(void)
 {
 	static struct event ev;
 	struct passwd *pw;
+	struct timeval tv = { 60, 0 };
 	int pipes[2];
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipes) == -1) {
@@ -109,23 +117,23 @@ logger_init(void)
 	}
 
 	/* event for the tick */
-	tick.tv_sec = 60;
-	tick.tv_usec = 0;
 	evtimer_set(&ev_tick, logger_tick, NULL);
-	if (evtimer_add(&ev_tick, &tick) < 0) {
+	if (evtimer_add(&ev_tick, &tv) < 0) {
 		syslog(LOG_ERR, "evtimer_add: %m");
 		exit (EX_UNAVAILABLE);
 	}
-	logger_set_ts();
+	logger_setts();
 	return event_dispatch();
 }
 
 void
 logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 {
-	char buf[512];
+	char buf[ICB_MSGSIZE];
 	struct icbd_logentry e;
 	struct iovec iov[2];
+	FILE *fp = NULL;
+	int i;
 
 	if (event != EV_READ)
 		return;
@@ -148,9 +156,36 @@ logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 		    iov[1].iov_len, e.length);
 	}
 
-	/* TODO: check time of the day and open the next file */
+	for (i = 0; i < nlogfiles; i++)
+		if (strcmp(logfiles[i].group, e.group) == 0)
+			fp = logfiles[i].fp;
+	if (!fp && (fp = logger_open(e.group)) == NULL)
+		return;
 
-	fprintf(stderr, "%s%s@%s: %s\n", line_ts, e.nick, e.group, buf);
+	fprintf(fp, "%s<%s> %s\n", line_ts, e.nick, buf);
+}
+
+FILE *
+logger_open(char *group)
+{
+	char path[MAXPATHLEN];
+	FILE *fp = NULL;
+
+	if (mkdir(group, 0755) < 0 && errno != EEXIST) {
+		syslog(LOG_ERR, "%s: %m", group);
+		return (NULL);
+	}
+	snprintf(path, sizeof path, "%s/%s", group, file_ts);
+	if ((fp = fopen(path, "a")) == NULL) {
+		syslog(LOG_ERR, "%s: %m", path);
+		return (NULL);
+	}
+	setvbuf(fp, NULL, _IOLBF, 0);
+	if (verbose)
+		syslog(LOG_DEBUG, "logger_open: %s", path);
+	strlcpy(logfiles[nlogfiles].group, group, ICB_MAXGRPLEN);
+	logfiles[nlogfiles++].fp = fp;
+	return (fp);
 }
 
 void
@@ -177,20 +212,25 @@ void
 logger_tick(int fd __attribute__((unused)), short event __attribute__((unused)),
     void *arg __attribute__((unused)))
 {
-	logger_set_ts();
-	if (evtimer_add(&ev_tick, &tick) < 0) {
+	struct timeval tv = { 60, 0 };
+
+	logger_setts();
+	if (evtimer_add(&ev_tick, &tv) < 0) {
 		syslog(LOG_ERR, "evtimer_add: %m");
 		exit (EX_UNAVAILABLE);
 	}
 }
+
 void
-logger_set_ts(void)
+logger_setts(void)
 {
 	struct tm *tm;
 	time_t t;
 
-	t = time(NULL);
+	time(&t);
 	tm = gmtime(&t);
-	snprintf(line_ts, sizeof(line_ts), "[%02d:%02d] ", tm->tm_hour,
+	snprintf(file_ts, sizeof file_ts, "%04d-%02d", tm->tm_year + 1900,
+	    tm->tm_mon + 1);
+	snprintf(line_ts, sizeof line_ts, "[%02d:%02d] ", tm->tm_hour,
 	    tm->tm_min);
 }
