@@ -55,6 +55,7 @@ int  verbose;
 void usage(void);
 void getpeerinfo(struct icb_session *);
 void icbd_accept(int, short, void *);
+void icbd_paused(int, short, void *);
 void icbd_drop(struct icb_session *, char *);
 void icbd_ioerr(struct bufferevent *, short, void *);
 void icbd_dispatch(struct bufferevent *, void *);
@@ -69,6 +70,10 @@ static inline int icbd_session_cmp(struct icb_session *, struct icb_session *);
 RB_HEAD(icbd_sessions, icb_session) icbd_sessions;
 RB_PROTOTYPE(icbd_sessions, icb_session, node, icbd_session_cmp);
 RB_GENERATE(icbd_sessions, icb_session, node, icbd_session_cmp);
+
+struct icbd_listener {
+	struct event ev, pause;
+};
 
 int
 main(int argc, char *argv[])
@@ -145,7 +150,7 @@ main(int argc, char *argv[])
 
 	for (ch = 0; ch < argc; ch++) {
 		struct addrinfo hints, *res, *res0;
-		struct event *ev;
+		struct icbd_listener *l;
 		char *addr, *port;
 		int error, s, on = 1;
 
@@ -195,13 +200,14 @@ main(int argc, char *argv[])
 
 			(void)listen(s, TCP_BACKLOG);
 
-			if ((ev = calloc(1, sizeof *ev)) == NULL)
+			if ((l = calloc(1, sizeof *l)) == NULL)
 				err(EX_UNAVAILABLE, NULL);
-			event_set(ev, s, EV_READ | EV_PERSIST, icbd_accept, ev);
-			if (event_add(ev, NULL) < 0) {
+			event_set(&l->ev, s, EV_READ | EV_PERSIST, icbd_accept, l);
+			if (event_add(&l->ev, NULL) < 0) {
 				syslog(LOG_ERR, "event_add: %m");
 				return (EX_UNAVAILABLE);
 			}
+			evtimer_set(&l->pause, icbd_paused, l);
 
 			nsocks++;
 		}
@@ -254,18 +260,34 @@ icbd_session_lookup(uint64_t sid)
 
 void
 icbd_accept(int fd, short event __attribute__((__unused__)),
-    void *arg __attribute__((__unused__)))
+    void *arg)
 {
+	struct icbd_listener *l = arg;
 	struct sockaddr_storage ss;
+	struct timeval p = { 1, 0 };
 	struct icb_session *is;
 	socklen_t ss_len = sizeof ss;
 	int s, on = 1, tos = IPTOS_LOWDELAY;
 
 	ss.ss_len = ss_len;
-	if ((s = accept(fd, (struct sockaddr *)&ss, &ss_len)) < 0) {
-		syslog(LOG_ERR, "accept: %m");
-		return;
+	s = accept(fd, (struct sockaddr *)&ss, &ss_len);
+	if (s == -1) {
+		switch (errno) {
+		case EINTR:
+		case EWOULDBLOCK:
+		case ECONNABORTED:
+			return;
+		case EMFILE:
+		case ENFILE:
+			event_del(&l->ev);
+			evtimer_add(&l->pause, &p);
+			return;
+		default:
+			syslog(LOG_ERR, "accept: %m");
+			return;
+		}
 	}
+
 	if (ss.ss_family == AF_INET)
 		if (setsockopt(s, IPPROTO_IP, IP_TOS, &tos, sizeof tos) < 0)
 			syslog(LOG_WARNING, "IP_TOS: %m");
@@ -299,6 +321,14 @@ icbd_accept(int fd, short event __attribute__((__unused__)),
 
 	/* start icb conversation */
 	icb_start(is);
+}
+
+void
+icbd_paused(int fd __attribute__((__unused__)),
+	short events __attribute__((__unused__)), void *arg)
+{
+	struct icbd_listener *l = arg;
+	event_add(&l->ev, NULL);
 }
 
 __dead void
