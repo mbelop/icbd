@@ -123,7 +123,7 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 		return;
 	}
 
-	if (strlen(whom) == 0) {
+	if (strlen(arg) == 0) {
 		icb_error(is, "Invalid user");
 		return;
 	}
