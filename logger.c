@@ -38,8 +38,7 @@
 
 void logger_dispatch(int, short, void *);
 FILE *logger_open(char *);
-void logger_tick(int, short, void *);
-void logger_setts(void);
+void logger_tick(void);
 
 struct icbd_logentry {
 	char	group[ICB_MAXGRPLEN];
@@ -56,7 +55,7 @@ int nlogfiles;
 int logger_pipe;
 
 char file_ts[sizeof "0000-00"];
-char line_ts[sizeof "[00:00] "];
+char line_ts[sizeof "00:00"];
 struct event ev_tick;
 
 extern char logprefix[MAXPATHLEN/2];
@@ -67,7 +66,6 @@ logger_init(void)
 {
 	static struct event ev;
 	struct passwd *pw;
-	struct timeval tv = { 60, 0 };
 	int pipes[2];
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipes) == -1) {
@@ -124,13 +122,8 @@ logger_init(void)
 		exit (EX_UNAVAILABLE);
 	}
 
-	/* event for the tick */
-	evtimer_set(&ev_tick, logger_tick, NULL);
-	if (evtimer_add(&ev_tick, &tv) < 0) {
-		syslog(LOG_ERR, "evtimer_add: %m");
-		exit (EX_UNAVAILABLE);
-	}
-	logger_setts();
+	evtimer_set(&ev_tick, (void (*)(int, short, void *))logger_tick, NULL);
+	logger_tick();
 	return event_dispatch();
 }
 
@@ -170,9 +163,9 @@ logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 	if (!fp && (fp = logger_open(e.group)) == NULL)
 		return;
 	if (strlen(e.nick) == 0)
-		fprintf(fp, "%s%s\n", line_ts, buf);
+		fprintf(fp, "[%s] %s\n", line_ts, buf);
 	else
-		fprintf(fp, "%s<%s> %s\n", line_ts, e.nick, buf);
+		fprintf(fp, "[%s] <%s> %s\n", line_ts, e.nick, buf);
 }
 
 FILE *
@@ -223,21 +216,9 @@ logger(char *group, char *nick, char *what)
 }
 
 void
-logger_tick(int fd __attribute__((unused)), short event __attribute__((unused)),
-    void *arg __attribute__((unused)))
+logger_tick(void)
 {
 	struct timeval tv = { 60, 0 };
-
-	logger_setts();
-	if (evtimer_add(&ev_tick, &tv) < 0) {
-		syslog(LOG_ERR, "evtimer_add: %m");
-		exit (EX_UNAVAILABLE);
-	}
-}
-
-void
-logger_setts(void)
-{
 	static int last_mon = -1;
 	struct tm *tm;
 	time_t t;
@@ -249,12 +230,17 @@ logger_setts(void)
 		snprintf(file_ts, sizeof file_ts, "%04d-%02d", tm->tm_year +
 		    1900, tm->tm_mon + 1);
 		last_mon = tm->tm_mon;
+		/* rotate log files */
 		for (i = 0; i < nlogfiles; i++) {
 			fclose(logfiles[i].fp);
 			logfiles[i].fp = NULL;
 		}
 		nlogfiles = 0;
 	}
-	snprintf(line_ts, sizeof line_ts, "[%02d:%02d] ", tm->tm_hour,
+	snprintf(line_ts, sizeof line_ts, "%02d:%02d", tm->tm_hour,
 	    tm->tm_min);
+	if (evtimer_add(&ev_tick, &tv) < 0) {
+		syslog(LOG_ERR, "evtimer_add: %m");
+		exit (EX_UNAVAILABLE);
+	}
 }
