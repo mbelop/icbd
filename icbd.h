@@ -33,4 +33,4 @@ int	dns_rresolv(struct icb_session *, struct sockaddr_storage *);
 
 /* logger.c */
 int	logger_init(void);
-void	logger(time_t, char *, char *, char *);
+void	logger(char *, char *, char *);

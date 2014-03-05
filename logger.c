@@ -19,8 +19,6 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/uio.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +29,6 @@
 #include <login_cap.h>
 #include <event.h>
 #include <pwd.h>
-#include <netdb.h>
 
 #include "icb.h"
 #include "icbd.h"
@@ -41,7 +38,6 @@ void logger_dispatch(int, short, void *);
 int logger_pipe;
 
 struct icbd_logentry {
-	time_t	timestamp;
 	char	group[ICB_MAXGRPLEN];
 	char	nick[ICB_MAXNICKLEN];
 	size_t	length;
@@ -140,12 +136,11 @@ logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
 }
 
 void
-logger(time_t timestamp, char *group, char *nick, char *what)
+logger(char *group, char *nick, char *what)
 {
 	struct icbd_logentry e;
 	struct iovec iov[2];
 
-	e.timestamp = timestamp;
 	strlcpy(e.group, group, ICB_MAXGRPLEN);
 	strlcpy(e.nick, nick, ICB_MAXNICKLEN);
 	e.length = strlen(what) + 1;

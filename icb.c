@@ -234,7 +234,7 @@ icb_groupmsg(struct icb_session *is, char *msg)
 	    is->nick, ICB_M_SEP, msg);
 	buf[0] = buflen;
 
-	logger(time(NULL), ig->name, is->nick, msg);
+	logger(ig->name, is->nick, msg);
 
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (s == is)
