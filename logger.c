@@ -238,13 +238,23 @@ logger_tick(int fd __attribute__((unused)), short event __attribute__((unused)),
 void
 logger_setts(void)
 {
+	static int last_mon = -1;
 	struct tm *tm;
 	time_t t;
+	int i;
 
 	time(&t);
 	tm = gmtime(&t);
-	snprintf(file_ts, sizeof file_ts, "%04d-%02d", tm->tm_year + 1900,
-	    tm->tm_mon + 1);
+	if (last_mon != tm->tm_mon) {
+		snprintf(file_ts, sizeof file_ts, "%04d-%02d", tm->tm_year +
+		    1900, tm->tm_mon + 1);
+		last_mon = tm->tm_mon;
+		for (i = 0; i < nlogfiles; i++) {
+			fclose(logfiles[i].fp);
+			logfiles[i].fp = NULL;
+		}
+		nlogfiles = 0;
+	}
 	snprintf(line_ts, sizeof line_ts, "[%02d:%02d] ", tm->tm_hour,
 	    tm->tm_min);
 }
