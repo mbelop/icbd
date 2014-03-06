@@ -128,7 +128,7 @@ void		 icb_error(struct icb_session *, const char *, ...);
 void		 icb_init(struct icbd_callbacks *);
 void		 icb_input(struct icb_session *);
 inline int	 icb_ismod(struct icb_group *, struct icb_session *);
-int		 icb_modpermit(struct icb_session *);
+int		 icb_modpermit(struct icb_session *, int);
 int		 icb_pass(struct icb_group *, struct icb_session *,
 		     struct icb_session *);
 void		 icb_privmsg(struct icb_session *, char *, char *);
