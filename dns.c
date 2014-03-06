@@ -38,8 +38,6 @@
 void dns_dispatch(int, short, void *);
 void dns_done(int, short, void *);
 
-int dns_pipe;
-
 struct icbd_dnsquery {
 	uint64_t			sid;
 	union {
@@ -47,6 +45,10 @@ struct icbd_dnsquery {
 		char			rep[MAXHOSTNAMELEN];
 	} u;
 };
+
+int dns_pipe;
+
+extern int dodns;
 
 int
 dns_init(void)
@@ -172,10 +174,13 @@ dns_done(int fd, short event, void *arg __attribute__((unused)))
 		syslog(LOG_DEBUG, "icbd_dns: resolved %s", is->host);
 }
 
-int
+void
 dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
 {
 	struct icbd_dnsquery q;
+
+	if (!dodns)
+		return;
 
 	if (verbose)
 		syslog(LOG_DEBUG, "resolving: %s", is->host);
@@ -185,8 +190,6 @@ dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
 	memcpy(&q.u.req, ss, sizeof *ss);
 	if (write(dns_pipe, &q, sizeof q) != sizeof q) {
 		syslog(LOG_ERR, "write: %m");
-		exit (EX_OSERR);
+		exit(EX_OSERR);
 	}
-
-	return 0;
 }

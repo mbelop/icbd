@@ -22,7 +22,7 @@
 .Sh SYNOPSIS
 .Nm icbd
 .Bk -words
-.Op Fl 46Cdv
+.Op Fl 46Cdnv
 .Oo
 .Fl G Ar group1 Ns Op , Ns Ar ...
 .Oc
@@ -80,6 +80,8 @@ can be granted with moderation of any group.
 .Ar modtab
 file contains one nick per line; empty lines and lines starting with
 a hash symbol are ignored.
+.Ir Fl n
+Disable DNS resolver.
 .It Fl S Ar name
 Set the server's name to
 .Ar name .

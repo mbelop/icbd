@@ -49,6 +49,7 @@ char srvname[MAXHOSTNAMELEN];
 int  creategroups;
 int  foreground;
 char logprefix[MAXPATHLEN/2];
+int  dodns = 1;
 int  dologging;
 int  verbose;
 
@@ -88,7 +89,7 @@ main(int argc, char *argv[])
 	/* init group lists before calling icb_addgroup */
 	icb_init(&ic);
 
-	while ((ch = getopt(argc, argv, "46CdG:M:L:S:v")) != -1)
+	while ((ch = getopt(argc, argv, "46CdG:M:nL:S:v")) != -1)
 		switch (ch) {
 		case '4':
 			inet4++;
@@ -111,6 +112,9 @@ main(int argc, char *argv[])
 			break;
 		case 'M':
 			icbd_modtab(optarg);
+			break;
+		case 'n':
+			dodns = 0;
 			break;
 		case 'S':
 			strlcpy(srvname, optarg, sizeof srvname);
