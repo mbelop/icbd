@@ -218,8 +218,9 @@ logger(char *group, char *nick, char *what)
 void
 logger_tick(void)
 {
+	static int last_mon = -1, last_mday = -1;
 	struct timeval tv = { 60, 0 };
-	static int last_mon = -1;
+	char buf[128];
 	struct tm *tm;
 	time_t t;
 	int i;
@@ -236,6 +237,13 @@ logger_tick(void)
 			logfiles[i].fp = NULL;
 		}
 		nlogfiles = 0;
+	}
+	if (tm->tm_mday != last_mday) {
+		strftime(buf, sizeof(buf),
+		    "Today is %a %b %e %Y %H:%M %Z (%z)", tm);
+		for (i = 0; i < nlogfiles; i++)
+			fprintf(logfiles[i].fp, "%s\n", buf);
+		last_mday = tm->tm_mday;
 	}
 	snprintf(line_ts, sizeof line_ts, "%02d:%02d", tm->tm_hour,
 	    tm->tm_min);
