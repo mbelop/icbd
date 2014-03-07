@@ -209,7 +209,8 @@ main(int argc, char *argv[])
 
 			if ((l = calloc(1, sizeof *l)) == NULL)
 				err(EX_UNAVAILABLE, NULL);
-			event_set(&l->ev, s, EV_READ | EV_PERSIST, icbd_accept, l);
+			event_set(&l->ev, s, EV_READ | EV_PERSIST,
+			    icbd_accept, l);
 			if (event_add(&l->ev, NULL) < 0) {
 				syslog(LOG_ERR, "event_add: %m");
 				return (EX_UNAVAILABLE);
