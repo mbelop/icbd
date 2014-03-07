@@ -36,7 +36,8 @@
 #include "icb.h"
 #include "icbd.h"
 
-void logger_dispatch(int, short, void *);
+void logger_ioerr(struct bufferevent *, short, void *);
+void logger_dispatch(struct bufferevent *, void *);
 FILE *logger_open(char *);
 void logger_tick(void);
 
@@ -64,7 +65,7 @@ extern int dologging;
 int
 logger_init(void)
 {
-	static struct event ev;
+	struct bufferevent *bev;
 	struct passwd *pw;
 	int pipes[2];
 
@@ -116,10 +117,15 @@ logger_init(void)
 	event_init();
 
 	/* event for message processing */
-	event_set(&ev, pipes[1], EV_READ | EV_PERSIST, logger_dispatch, NULL);
-	if (event_add(&ev, NULL) < 0) {
-		syslog(LOG_ERR, "event_add: %m");
-		exit (EX_UNAVAILABLE);
+	if ((bev = bufferevent_new(pipes[1], logger_dispatch, NULL,
+	    logger_ioerr, NULL)) == NULL) {
+		syslog(LOG_ERR, "bufferevent_new: %m");
+		exit(EX_UNAVAILABLE);
+	}
+	if (bufferevent_enable(bev, EV_READ)) {
+		syslog(LOG_ERR, "bufferevent_enable: %m");
+		bufferevent_free(bev);
+		exit(EX_UNAVAILABLE);
 	}
 
 	evtimer_set(&ev_tick, (void (*)(int, short, void *))logger_tick, NULL);
@@ -128,44 +134,82 @@ logger_init(void)
 }
 
 void
-logger_dispatch(int fd, short event, void *arg __attribute__((unused)))
+logger_ioerr(struct bufferevent *bev __attribute__((__unused__)), short what,
+    void *arg __attribute__((__unused__)))
 {
-	char buf[ICB_MSGSIZE];
-	struct icbd_logentry e;
-	struct iovec iov[2];
+	const char *cause = NULL;
+
+	if (what & EVBUFFER_TIMEOUT)
+		cause = "timeout";
+	else if (what & EVBUFFER_EOF)
+		cause = "eof";
+	else if (what & EVBUFFER_ERROR)
+		cause = what & EVBUFFER_READ ? "read" : "write";
+	syslog(LOG_ERR, "logger_ioerr: %s", cause ? cause : "unknown");
+	exit(EX_IOERR);
+}
+
+void
+logger_dispatch(struct bufferevent *bev, void *arg __attribute__((unused)))
+{
+	struct icbd_logentry *e;
+	static char buf[sizeof *e + ICB_MSGSIZE];
+	static size_t nread = 0;
 	FILE *fp = NULL;
+	size_t res;
+	char *m;
 	int i;
 
-	if (event != EV_READ)
-		return;
+	e = (struct icbd_logentry *)buf;
+	m = buf + sizeof *e;
 
-	bzero(&e, sizeof e);
-	iov[0].iov_base = &e;
-	iov[0].iov_len = sizeof e;
-
-	iov[1].iov_base = buf;
-	iov[1].iov_len = sizeof buf;
-
-	if (readv(fd, iov, 2) < (ssize_t)sizeof e) {
-		syslog(LOG_ERR, "logger read: %m");
-		exit(EX_DATAERR);
+	while (EVBUFFER_LENGTH(EVBUFFER_INPUT(bev)) > 0) {
+		if (nread == 0) {
+			bzero(e, sizeof *e);
+			/* read the log entry header */
+			res = bufferevent_read(bev, &buf[0], sizeof *e);
+			nread += res;
+			if (nread < sizeof *e)
+				return;
+		}
+		/* see if we got the whole header */
+		if (nread < sizeof *e) {
+			/* finish reading */
+			res = bufferevent_read(bev, &buf[nread],
+			    sizeof *e - nread);
+			nread += res;
+			if (nread < sizeof *e)
+				return;
+		}
+		/* fetch the message */
+		res = bufferevent_read(bev, &buf[nread],
+		    MIN(e->length, ICB_MSGSIZE));
+		nread += res;
+#ifdef DEBUG
+		{
+			printf("logger read %lu out of %lu:\n", res, e->length);
+			for (i = 0; i < (int)res; i++)
+				printf(" %02x", (unsigned char)m[i]);
+			printf("\n");
+		}
+#endif
+		if (nread < e->length)
+			return;
+		/* terminate the buffer */
+		m[MIN(nread - sizeof *e, ICB_MSGSIZE)] = '\0';
+		/* find the appropriate log file */
+		for (i = 0; i < nlogfiles; i++)
+			if (strcmp(logfiles[i].group, e->group) == 0)
+				fp = logfiles[i].fp;
+		if (!fp && (fp = logger_open(e->group)) == NULL)
+			return;
+		if (strlen(e->nick) == 0)
+			fprintf(fp, "[%s] %s\n", line_ts, m);
+		else
+			fprintf(fp, "[%s] <%s> %s\n", line_ts, e->nick, m);
+		/* get ready for the next message */
+		nread = 0;
 	}
-
-	/* XXX */
-	if (iov[1].iov_len < e.length) {
-		syslog(LOG_ERR, "logger read %lu out of %lu",
-		    iov[1].iov_len, e.length);
-	}
-
-	for (i = 0; i < nlogfiles; i++)
-		if (strcmp(logfiles[i].group, e.group) == 0)
-			fp = logfiles[i].fp;
-	if (!fp && (fp = logger_open(e.group)) == NULL)
-		return;
-	if (strlen(e.nick) == 0)
-		fprintf(fp, "[%s] %s\n", line_ts, buf);
-	else
-		fprintf(fp, "[%s] <%s> %s\n", line_ts, e.nick, buf);
 }
 
 FILE *
