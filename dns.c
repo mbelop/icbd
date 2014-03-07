@@ -171,7 +171,7 @@ dns_done(int fd, short event, void *arg __attribute__((unused)))
 	}
 
 	if ((is = icbd_session_lookup(q.sid)) == NULL) {
-		syslog(LOG_ERR, "failed to find session %llu", q.sid);
+		syslog(LOG_DEBUG, "failed to find session %llu", q.sid);
 		return;
 	}
 
