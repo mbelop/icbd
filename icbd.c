@@ -557,6 +557,7 @@ icbd_modtab(char *mtab)
 	if ((fp = fopen(mtab, "r")) == NULL)
 		err(EX_NOINPUT, "%s", mtab);
 
+	modtabcnt = 0;
 	bzero(modtab, ICB_MTABLEN * ICB_MAXNICKLEN);
 	lbuf = NULL;
 	while ((buf = fgetln(fp, &len)) && modtabcnt < ICB_MTABLEN) {
