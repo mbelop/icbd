@@ -218,6 +218,9 @@ logger_open(char *group)
 	char path[MAXPATHLEN];
 	FILE *fp = NULL;
 
+	/* make sure not to overflow the logfiles table */
+	if (nlogfiles == sizeof logfiles / sizeof logfiles[0])
+		return (NULL);
 	snprintf(path, sizeof path, "%s/%s", logprefix, group);
 	if (mkdir(path, 0755) < 0 && errno != EEXIST) {
 		syslog(LOG_ERR, "%s: %m", group);
