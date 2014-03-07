@@ -128,25 +128,26 @@ struct icbd_callbacks {
 void *icb_cmd_lookup(char *);
 
 /* icb.c */
-struct icb_group *icb_addgroup(struct icb_session *, char *, char *);
-void		 icb_cmdout(struct icb_session *, int, char *);
-void		 icb_delgroup(struct icb_group *);
-void		 icb_error(struct icb_session *, const char *, ...);
-void		 icb_init(struct icbd_callbacks *);
-void		 icb_input(struct icb_session *);
-inline int	 icb_ismod(struct icb_group *, struct icb_session *);
-int		 icb_modpermit(struct icb_session *, int);
-int		 icb_pass(struct icb_group *, struct icb_session *,
-		     struct icb_session *);
-void		 icb_privmsg(struct icb_session *, char *, char *);
-void		 icb_remove(struct icb_session *, char *);
-void		 icb_sendfmt(struct icb_session *, const char *, ...);
-void		 icb_start(struct icb_session *);
-void		 icb_status(struct icb_session *, int, const char *, ...);
-void		 icb_status_group(struct icb_group *, struct icb_session *,
+struct icb_group *
+		icb_addgroup(struct icb_session *, char *, char *);
+void		icb_cmdout(struct icb_session *, int, char *);
+void		icb_delgroup(struct icb_group *);
+void		icb_error(struct icb_session *, const char *, ...);
+void		icb_init(struct icbd_callbacks *);
+void		icb_input(struct icb_session *);
+inline int	icb_ismod(struct icb_group *, struct icb_session *);
+int		icb_modpermit(struct icb_session *, int);
+int		icb_pass(struct icb_group *, struct icb_session *,
+		    struct icb_session *);
+void		icb_privmsg(struct icb_session *, char *, char *);
+void		icb_remove(struct icb_session *, char *);
+void		icb_sendfmt(struct icb_session *, const char *, ...);
+void		icb_start(struct icb_session *);
+void		icb_status(struct icb_session *, int, const char *, ...);
+void		icb_status_group(struct icb_group *, struct icb_session *,
 		    int, const char *, ...);
-void		 icb_who(struct icb_session *, struct icb_group *);
-int		 icb_vis(char *, const char *, size_t, int);
+void		icb_who(struct icb_session *, struct icb_group *);
+int		icb_vis(char *, const char *, size_t, int);
 
 /* callbacks from icbd.c */
 void		(*icb_drop)(struct icb_session *, char *);

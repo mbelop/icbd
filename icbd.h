@@ -23,14 +23,16 @@
 extern int verbose;
 
 /* icbd.c */
-inline struct icb_session *icbd_session_lookup(uint64_t);
-time_t	getmonotime(void);
+inline struct icb_session *
+		icbd_session_lookup(uint64_t);
+void		icbd_modupdate(void);
+time_t		getmonotime(void);
 
 /* dns.c */
 struct sockaddr_storage;
-int	dns_init(void);
-void	dns_rresolv(struct icb_session *, struct sockaddr_storage *);
+int		dns_init(void);
+void		dns_rresolv(struct icb_session *, struct sockaddr_storage *);
 
 /* logger.c */
-int	logger_init(void);
-void	logger(char *, char *, char *);
+int		logger_init(void);
+void		logger(char *, char *, char *);

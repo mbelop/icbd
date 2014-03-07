@@ -43,6 +43,7 @@
 #include "icbd.h"
 
 uint64_t sessionid;
+struct stat modtabst;
 char modtabpath[MAXPATHLEN];
 char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
 int  modtabcnt;
@@ -63,10 +64,8 @@ void icbd_ioerr(struct bufferevent *, short, void *);
 void icbd_dispatch(struct bufferevent *, void *);
 void icbd_log(struct icb_session *, int, const char *, ...);
 void icbd_grplist(char *);
-void icbd_modtab(char *);
 void icbd_restrict(void);
 void icbd_write(struct icb_session *, char *, ssize_t);
-void icbd_signal(int);
 
 static inline int icbd_session_cmp(struct icb_session *, struct icb_session *);
 
@@ -81,7 +80,6 @@ struct icbd_listener {
 int
 main(int argc, char *argv[])
 {
-	struct event ev_sig;
 	struct icbd_callbacks ic = { icbd_drop, icbd_log, icbd_write };
 	const char *cause = NULL;
 	int ch, nsocks = 0, save_errno = 0;
@@ -238,13 +236,9 @@ main(int argc, char *argv[])
 	if (!foreground)
 		icbd_restrict();
 
+	icbd_modupdate();
+
 	(void)signal(SIGPIPE, SIG_IGN);
-	if (strlen(modtabpath) > 0) {
-		icbd_modtab(modtabpath);
-		signal_set(&ev_sig, SIGHUP,
-		    (void (*)(int, short, void *))icbd_signal, NULL);
-		signal_add(&ev_sig, NULL);
-	}
 
 	(void)event_dispatch();
 
@@ -548,14 +542,26 @@ icbd_grplist(char *list)
 }
 
 void
-icbd_modtab(char *mtab)
+icbd_modupdate(void)
 {
+	struct stat st;
 	FILE *fp;
 	char *buf, *lbuf;
 	size_t len;
 
-	if ((fp = fopen(mtab, "r")) == NULL)
-		err(EX_NOINPUT, "%s", mtab);
+	if (strlen(modtabpath) == 0)
+		return;
+	if (stat(modtabpath, &st)) {
+		syslog(LOG_ERR, "stat %s", modtabpath);
+		return;
+	}
+	/* see if there are any changes */
+	if (timespeccmp(&st.st_mtim, &modtabst.st_mtim, ==) ||
+	    st.st_size == 0)
+		return;
+
+	if ((fp = fopen(modtabpath, "r")) == NULL)
+		err(EX_NOINPUT, "open %s", modtabpath);
 
 	modtabcnt = 0;
 	bzero(modtab, ICB_MTABLEN * ICB_MAXNICKLEN);
@@ -576,6 +582,7 @@ icbd_modtab(char *mtab)
 		if (buf[0] == '#' || buf[0] == '\0')
 			continue;
 		strlcpy(modtab[modtabcnt++], buf, ICB_MAXNICKLEN);
+		fprintf(stderr, "%s\n", buf);
 	}
 	free(lbuf);
 
@@ -583,20 +590,6 @@ icbd_modtab(char *mtab)
 	    (int (*)(const void *, const void *))strcmp);
 
 	fclose(fp);
-}
-
-void
-icbd_signal(int sig)
-{
-	switch (sig) {
-	case SIGHUP:
-		if (strlen(modtabpath) > 0)
-			icbd_modtab(modtabpath);
-		break;
-	default:
-		syslog(LOG_WARNING, "unexpected signal %d", sig);
-		break;
-	}
 }
 
 time_t

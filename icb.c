@@ -550,6 +550,7 @@ icb_modpermit(struct icb_session *is, int enforce)
 	extern char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
 	extern int modtabcnt;
 
+	icbd_modupdate();
 	if ((enforce ? 0 : modtabcnt == 0) ||
 	    bsearch(is->nick, modtab, modtabcnt, ICB_MAXNICKLEN,
 	    (int (*)(const void *, const void *))strcmp))
