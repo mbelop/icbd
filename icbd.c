@@ -349,6 +349,20 @@ usage(void)
 /*
  *  bufferevent functions
  */
+void
+icbd_ioerr(struct bufferevent *bev __attribute__((__unused__)), short what,
+    void *arg)
+{
+	struct icb_session *is = (struct icb_session *)arg;
+
+	if (what & EVBUFFER_TIMEOUT)
+		icbd_drop(is, "timeout");
+	else if (what & EVBUFFER_EOF)
+		icbd_drop(is, NULL);
+	else if (what & EVBUFFER_ERROR)
+		icbd_drop(is, (what & EVBUFFER_READ) ? "read error" :
+		    "write error");
+}
 
 void
 icbd_dispatch(struct bufferevent *bev, void *arg)
@@ -418,21 +432,6 @@ icbd_drop(struct icb_session *is, char *reason)
 	bufferevent_free(is->bev);
 	RB_REMOVE(icbd_sessions, &icbd_sessions, is);
 	free(is);
-}
-
-void
-icbd_ioerr(struct bufferevent *bev __attribute__((__unused__)), short what,
-    void *arg)
-{
-	struct icb_session *is = (struct icb_session *)arg;
-
-	if (what & EVBUFFER_TIMEOUT)
-		icbd_drop(is, "timeout");
-	else if (what & EVBUFFER_EOF)
-		icbd_drop(is, NULL);
-	else if (what & EVBUFFER_ERROR)
-		icbd_drop(is, (what & EVBUFFER_READ) ? "read error" :
-		    "write error");
 }
 
 void
