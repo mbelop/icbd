@@ -29,6 +29,7 @@
 #define ICB_MAXNICKLEN		 32
 #define ICB_MAXPASSLEN		 32
 #define ICB_MAXTOPICLEN		 160
+#define ICB_MAXHOSTLEN		 40
 #define ICB_MTABLEN		 50 /* XXX */
 
 #define ICB_M_LOGIN		 'a'
@@ -75,7 +76,7 @@ struct icb_session {
 	uint64_t		 id;
 	char			 nick[ICB_MAXNICKLEN];
 	char			 client[ICB_MAXNICKLEN];
-	char			 host[MAXHOSTNAMELEN];
+	char			 host[ICB_MAXHOSTLEN];
 	char			 buffer[ICB_MSGSIZE];
 	struct event		 ev;
 	struct bufferevent	*bev;

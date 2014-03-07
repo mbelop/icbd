@@ -42,7 +42,7 @@ struct icbd_dnsquery {
 	uint64_t			sid;
 	union {
 		struct sockaddr_storage	req;
-		char			rep[MAXHOSTNAMELEN];
+		char			rep[NI_MAXHOST];
 	} u;
 };
 
@@ -167,11 +167,15 @@ dns_done(int fd, short event, void *arg __attribute__((unused)))
 		return;
 	}
 
-	memcpy(is->host, q.u.rep, MAXHOSTNAMELEN);
-	is->host[sizeof is->host - 1] = '\0';
-
 	if (verbose)
-		syslog(LOG_DEBUG, "icbd_dns: resolved %s", is->host);
+		syslog(LOG_DEBUG, "icbd_dns: resolved %s to %s",
+		    is->host, q.u.rep);
+
+	/* XXX */
+	if (strcmp(q.u.rep, "localhost") == 0)
+		strlcpy(is->host, "unknown", ICB_MAXHOSTLEN);
+	else if (strlen(q.u.rep) < ICB_MAXHOSTLEN)
+		strlcpy(is->host, q.u.rep, ICB_MAXHOSTLEN);
 }
 
 void
