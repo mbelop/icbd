@@ -244,8 +244,12 @@ logger(char *group, char *nick, char *what)
 {
 	struct icbd_logentry e;
 	struct iovec iov[2];
+	const char *defgrp = "1";
 
 	if (!dologging)
+		return;
+
+	if (strcmp(group, defgrp) == 0)
 		return;
 
 	strlcpy(e.group, group, ICB_MAXGRPLEN);
