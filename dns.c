@@ -123,14 +123,22 @@ dns_dispatch(int fd, short event, void *arg __attribute__((unused)))
 	char host[NI_MAXHOST];
 	struct sockaddr *sa;
 	struct icbd_dnsquery q;
+	ssize_t res;
 	int gerr;
 
 	if (event != EV_READ)
 		return;
 
-	if (read(fd, &q, sizeof q) != sizeof q) {
+	do
+		res = read(fd, &q, sizeof q);
+	while (res == -1 && errno == EINTR);
+	if (res == -1 && errno == EAGAIN)
+		return;
+	if (res < (ssize_t)sizeof q) {
 		syslog(LOG_ERR, "dns read: %m");
-		exit(EX_DATAERR);
+		/* disable dns resolver */
+		dodns = 0;
+		return;
 	}
 
 	sa = (struct sockaddr *)&q.u.req;
