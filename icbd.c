@@ -43,6 +43,7 @@
 #include "icbd.h"
 
 uint64_t sessionid;
+char modtabpath[MAXPATHLEN];
 char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
 int  modtabcnt;
 char srvname[MAXHOSTNAMELEN];
@@ -65,6 +66,7 @@ void icbd_grplist(char *);
 void icbd_modtab(char *);
 void icbd_restrict(void);
 void icbd_write(struct icb_session *, char *, ssize_t);
+void icbd_signal(int);
 
 static inline int icbd_session_cmp(struct icb_session *, struct icb_session *);
 
@@ -79,6 +81,7 @@ struct icbd_listener {
 int
 main(int argc, char *argv[])
 {
+	struct event ev_sig;
 	struct icbd_callbacks ic = { icbd_drop, icbd_log, icbd_write };
 	const char *cause = NULL;
 	int ch, nsocks = 0, save_errno = 0;
@@ -111,7 +114,7 @@ main(int argc, char *argv[])
 			dologging++;
 			break;
 		case 'M':
-			icbd_modtab(optarg);
+			strlcpy(modtabpath, optarg, sizeof modtabpath);
 			break;
 		case 'n':
 			dodns = 0;
@@ -235,6 +238,12 @@ main(int argc, char *argv[])
 		icbd_restrict();
 
 	(void)signal(SIGPIPE, SIG_IGN);
+	if (strlen(modtabpath) > 0) {
+		icbd_modtab(modtabpath);
+		signal_set(&ev_sig, SIGHUP,
+		    (void (*)(int, short, void *))icbd_signal, NULL);
+		signal_add(&ev_sig, NULL);
+	}
 
 	(void)event_dispatch();
 
@@ -558,6 +567,20 @@ icbd_modtab(char *mtab)
 	    (int (*)(const void *, const void *))strcmp);
 
 	fclose(fp);
+}
+
+void
+icbd_signal(int sig)
+{
+	switch (sig) {
+	case SIGHUP:
+		if (strlen(modtabpath) > 0)
+			icbd_modtab(modtabpath);
+		break;
+	default:
+		syslog(LOG_WARNING, "unexpected signal %d", sig);
+		break;
+	}
 }
 
 time_t
