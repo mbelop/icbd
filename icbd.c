@@ -377,16 +377,28 @@ void
 icbd_dispatch(struct bufferevent *bev, void *arg)
 {
 	struct icb_session *is = (struct icb_session *)arg;
+	unsigned char length;
 
 	while (EVBUFFER_LENGTH(EVBUFFER_INPUT(bev)) > 0) {
 		if (is->length == 0) {
 			/* read length */
-			is->rlen = bufferevent_read(bev, is->buffer, 1);
-			is->length = (size_t)(unsigned char)is->buffer[0];
-			if (is->length == 0) {
+			bufferevent_read(bev, &length, 1);
+			if (length == 0) {
+				/*
+				 * An extension has been proposed:
+				 * if length is 0, the packet is part of an
+				 * "extended packet". The packet should be
+				 * treated as if length was 255 and the next
+				 * packet received from the sender should be
+				 * appended to this packet.
+				 *
+				 * This server doesn't support this yet.
+				 */
 				icbd_drop(is, "invalid packet");
 				return;
 			}
+			is->length = (size_t)length;
+			is->rlen = 0;
 		}
 		/* read as much as we can */
 		is->rlen += bufferevent_read(bev, &is->buffer[is->rlen],
@@ -405,6 +417,8 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 		/* see you next time around */
 		if (is->rlen < is->length)
 			return;
+		/* null-terminate the data */
+		is->buffer[MIN(is->rlen, ICB_MSGSIZE - 1)] = '\0';
 		/* process the message in full */
 		icb_input(is);
 		is->rlen = is->length = 0;

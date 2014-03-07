@@ -81,8 +81,8 @@ icb_input(struct icb_session *is)
 	char type;
 
 	is->last = getmonotime();
-	type = msg[1];
-	msg += 2;
+	type = msg[0];
+	msg++;
 	if (!ISSETF(is->flags, ICB_SF_LOGGEDIN) && type != ICB_M_LOGIN) {
 		icb_error(is, "Not logged in");
 		return;
@@ -377,7 +377,7 @@ void
 icb_status_group(struct icb_group *ig, struct icb_session *ex, int type,
     const char *fmt, ...)
 {
-	char buf[ICB_MSGSIZE];
+	char buf[ICB_MSGSIZE - 10]; /* truncate to make sure all fits */
 	va_list ap;
 	struct icb_session *s;
 
@@ -480,7 +480,7 @@ icb_delgroup(struct icb_group *ig)
 int
 icb_dowho(struct icb_session *is, struct icb_group *ig)
 {
-	char buf[ICB_MSGSIZE];
+	char buf[ICB_MSGSIZE - 10]; /* truncate to make sure all fits */
 	struct icb_session *s;
 	int nusers = 0;
 
@@ -509,7 +509,7 @@ icb_dowho(struct icb_session *is, struct icb_group *ig)
 void
 icb_who(struct icb_session *is, struct icb_group *ig)
 {
-	char buf[ICB_MSGSIZE];
+	char buf[ICB_MSGSIZE - 10]; /* truncate to make sure all fits */
 	struct icb_group *g;
 
 	if (!ig) {

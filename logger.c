@@ -196,7 +196,7 @@ logger_dispatch(struct bufferevent *bev, void *arg __attribute__((unused)))
 		if (nread < e->length)
 			return;
 		/* terminate the buffer */
-		m[MIN(nread - sizeof *e, ICB_MSGSIZE)] = '\0';
+		m[MIN(nread - sizeof *e, ICB_MSGSIZE - 1)] = '\0';
 		/* find the appropriate log file */
 		for (i = 0; i < nlogfiles; i++)
 			if (strcmp(logfiles[i].group, e->group) == 0)

@@ -17,6 +17,12 @@
 #include <sys/queue.h>
 #include <sys/tree.h>
 
+/*
+ * ICB packet has the following format: <length><type><data>
+ * <lenght> is one byte length of the packet excluding the <lenght> byte;
+ * <type> is one byte type of the packet;
+ * <data> might not be null-terminated.
+ */
 #define ICB_MSGSIZE		 256
 
 #define ICB_MAXGRPLEN		 32
@@ -70,7 +76,7 @@ struct icb_session {
 	char			 nick[ICB_MAXNICKLEN];
 	char			 client[ICB_MAXNICKLEN];
 	char			 host[MAXHOSTNAMELEN];
-	char			 buffer[ICB_MSGSIZE+1];
+	char			 buffer[ICB_MSGSIZE];
 	struct event		 ev;
 	struct bufferevent	*bev;
 	struct icb_group	*group;
