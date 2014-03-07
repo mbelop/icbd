@@ -135,7 +135,7 @@ dns_dispatch(int fd, short event, void *arg __attribute__((unused)))
 	if (res == -1 && errno == EAGAIN)
 		return;
 	if (res < (ssize_t)sizeof q) {
-		syslog(LOG_ERR, "dns read: %m");
+		syslog(LOG_ERR, "dns_dispatch read: %m");
 		/* disable dns resolver */
 		dodns = 0;
 		return;
@@ -153,7 +153,7 @@ dns_dispatch(int fd, short event, void *arg __attribute__((unused)))
 
 	memcpy(&q.u.rep, host, sizeof host);
 	if (write(fd, &q, sizeof q) != sizeof q)
-		syslog(LOG_ERR, "dns write: %m");
+		syslog(LOG_ERR, "dns_dispatch write: %m");
 }
 
 void
@@ -161,12 +161,18 @@ dns_done(int fd, short event, void *arg __attribute__((unused)))
 {
 	struct icb_session *is;
 	struct icbd_dnsquery q;
+	ssize_t res;
 
 	if (event != EV_READ)
 		return;
 
-	if (read(fd, &q, sizeof q) != sizeof q) {
-		syslog(LOG_ERR, "read: %m");
+	do
+		res = read(fd, &q, sizeof q);
+	while (res == -1 && errno == EINTR);
+	if (res == -1 && errno == EAGAIN)
+		return;
+	if (res < (ssize_t)sizeof q) {
+		syslog(LOG_ERR, "dns_done read: %m");
 		return;
 	}
 
@@ -201,7 +207,7 @@ dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
 	q.sid = is->id;
 	memcpy(&q.u.req, ss, sizeof *ss);
 	if (write(dns_pipe, &q, sizeof q) != sizeof q) {
-		syslog(LOG_ERR, "write: %m");
+		syslog(LOG_ERR, "dns_rresolv write: %m");
 		exit(EX_OSERR);
 	}
 }
