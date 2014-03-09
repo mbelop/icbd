@@ -15,7 +15,6 @@
  */
 
 #include <sys/queue.h>
-#include <sys/tree.h>
 
 /*
  * ICB packet has the following format: <length><type><data>
@@ -73,7 +72,6 @@ enum {
 struct icb_group;
 
 struct icb_session {
-	uint64_t		 id;
 	char			 nick[ICB_MAXNICKLEN];
 	char			 client[ICB_MAXNICKLEN];
 	char			 host[ICB_MAXHOSTLEN];
@@ -96,9 +94,6 @@ struct icb_session {
 #define ICB_SF_NOGROUP		 0x08
 #define ICB_SF_NOBEEP		 0x10
 #define ICB_SF_NOBEEP2		 0x20
-
-	/* session tree */
-	RB_ENTRY(icb_session)	 node;
 
 	/* in-group linkage */
 	LIST_ENTRY(icb_session)	 entry;
