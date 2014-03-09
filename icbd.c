@@ -552,7 +552,7 @@ icbd_modupdate(void)
 	if (strlen(modtabpath) == 0)
 		return;
 	if (stat(modtabpath, &st)) {
-		syslog(LOG_ERR, "stat %s", modtabpath);
+		syslog(LOG_ERR, "stat %s: %m", modtabpath);
 		return;
 	}
 	/* see if there are any changes */
@@ -560,8 +560,10 @@ icbd_modupdate(void)
 	    st.st_size == 0)
 		return;
 
-	if ((fp = fopen(modtabpath, "r")) == NULL)
-		err(EX_NOINPUT, "open %s", modtabpath);
+	if ((fp = fopen(modtabpath, "r")) == NULL) {
+		syslog(LOG_ERR, "open %s: %m", modtabpath);
+		return;
+	}
 
 	modtabcnt = 0;
 	bzero(modtab, ICB_MTABLEN * ICB_MAXNICKLEN);
@@ -582,7 +584,6 @@ icbd_modupdate(void)
 		if (buf[0] == '#' || buf[0] == '\0')
 			continue;
 		strlcpy(modtab[modtabcnt++], buf, ICB_MAXNICKLEN);
-		fprintf(stderr, "%s\n", buf);
 	}
 	free(lbuf);
 
@@ -590,6 +591,8 @@ icbd_modupdate(void)
 	    (int (*)(const void *, const void *))strcmp);
 
 	fclose(fp);
+
+	memcpy(&modtabst, &st, sizeof modtabst);
 }
 
 time_t
