@@ -495,7 +495,7 @@ icb_dowho(struct icb_session *is, struct icb_group *ig)
 		    icb_ismod(ig, s) ? 'm' : ' ', ICB_M_SEP,
 		    s->nick, ICB_M_SEP, getmonotime() - s->last,
 		    ICB_M_SEP, ICB_M_SEP, s->login, ICB_M_SEP,
-		    s->client, ICB_M_SEP, s->host, ICB_M_SEP, "(nr)");
+		    s->client, ICB_M_SEP, s->host, ICB_M_SEP, " ");
 		icb_cmdout(is, CMDOUT_WL, buf);
 		nusers++;
 	}

@@ -375,6 +375,12 @@ icb_cmd_who(struct icb_session *is, char *arg)
 	if (strlen(arg) == 0)
 		return icb_who(is, NULL);
 
+	/* pidgin-icb treats '.' as the current group */
+	if (strlen(arg) == 1 && arg[0] == '.') {
+		icb_who(is, is->group);
+		return;
+	}
+
 	icb_vis(group, arg, ICB_MAXGRPLEN, VIS_SP);
 	LIST_FOREACH(ig, &groups, entry) {
 		if (strcmp(ig->name, group) == 0)
