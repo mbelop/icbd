@@ -77,6 +77,7 @@ struct icb_session {
 	char			 nick[ICB_MAXNICKLEN];
 	char			 client[ICB_MAXNICKLEN];
 	char			 host[ICB_MAXHOSTLEN];
+	char			 hostname[MAXHOSTNAMELEN];
 	char			 buffer[ICB_MSGSIZE];
 	struct event		 ev;
 	struct bufferevent	*bev;

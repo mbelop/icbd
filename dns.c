@@ -1,7 +1,10 @@
 /*
  * Copyright (c) 2014 Mike Belopuhov
- * Copyright (c) 2009 Michael Shalayeff
- * All rights reserved.
+ *
+ * ASR implementation and OpenSMTPD integration are copyright
+ * Copyright (c) 2008 Gilles Chehade <gilles@poolp.org>
+ * Copyright (c) 2009 Jacek Masiulaniec <jacekm@dobremiasto.net>
+ * Copyright (c) 2011-2012 Eric Faurot <eric@faurot.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,186 +19,52 @@
  * OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <errno.h>
+#include <event.h>
+#include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <syslog.h>
-#include <sysexits.h>
-#include <login_cap.h>
-#include <event.h>
-#include <pwd.h>
-#include <netdb.h>
+
+#include "asr.h"
 
 #include "icb.h"
 #include "icbd.h"
 
-void dns_dispatch(int, short, void *);
-void dns_done(int, short, void *);
-
-struct icbd_dnsquery {
-	uint64_t			sid;
-	union {
-		struct sockaddr_storage	req;
-		char			rep[NI_MAXHOST];
-	} u;
-};
-
-int dns_pipe;
+struct async_event;
+struct async_event *
+		async_run_event(struct async *,
+		    void (*)(int, struct async_res *, void *), void *);
+void		dns_done(int, struct async_res *, void *);
 
 extern int dodns;
 
-int
-dns_init(void)
+void
+dns_done(int ev __attribute__((__unused__)), struct async_res *ar, void *arg)
 {
-	static struct event ev;
-	struct passwd *pw;
-	int pipes[2];
+	struct icb_session *is = arg;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipes) == -1) {
-		syslog(LOG_ERR, "socketpair: %m");
-		exit(EX_OSERR);
-	}
-
-	switch (fork()) {
-	case -1:
-		syslog(LOG_ERR, "fork: %m");
-		exit(EX_OSERR);
-	case 0:
-		break;
-
-	default:
-		close(pipes[1]);
-		dns_pipe = pipes[0];
-
-		/* event for the reply */
-		event_set(&ev, dns_pipe, EV_READ | EV_PERSIST,
-		    dns_done, NULL);
-		if (event_add(&ev, NULL) < 0) {
-			syslog(LOG_ERR, "event_add: %m");
-			exit (EX_UNAVAILABLE);
-		}
-		return (0);
-	}
-
-	setproctitle("dns resolver");
-	close(pipes[0]);
-
-	if ((pw = getpwnam(ICBD_USER)) == NULL) {
-		syslog(LOG_ERR, "No passwd entry for %s", ICBD_USER);
-		exit(EX_NOUSER);
-	}
-
-	if (chdir("/") < 0) {
-		syslog(LOG_ERR, "chdir: %m");
-		exit(EX_UNAVAILABLE);
-	}
-
-	if (setusercontext(NULL, pw, pw->pw_uid,
-	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
-		exit(EX_NOPERM);
-
-	if (setuid(pw->pw_uid) < 0) {
-		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
-		exit(EX_NOPERM);
-	}
-
-	event_init();
-
-	/* event for the request */
-	event_set(&ev, pipes[1], EV_READ | EV_PERSIST, dns_dispatch, NULL);
-	if (event_add(&ev, NULL) < 0) {
-		syslog(LOG_ERR, "event_add: %m");
-		exit (EX_UNAVAILABLE);
-	}
-
-	return event_dispatch();
+	if (ar->ar_gai_errno == 0) {
+		syslog(LOG_DEBUG, "dns resolved %s to %s", is->host,
+		    is->hostname);
+		if (strncmp(is->hostname, "localhost",
+		    sizeof "localhost" - 1) == 0)
+			strlcpy(is->host, "unknown", ICB_MAXHOSTLEN);
+		else if (strlen(is->hostname) < ICB_MAXHOSTLEN)
+			strlcpy(is->host, is->hostname, ICB_MAXHOSTLEN);
+	} else
+		syslog(LOG_WARNING, "dns resolution failed: %s",
+		    gai_strerror(ar->ar_gai_errno));
 }
 
 void
-dns_dispatch(int fd, short event, void *arg __attribute__((unused)))
+dns_rresolv(struct icb_session *is, struct sockaddr *sa)
 {
-	char host[NI_MAXHOST];
-	struct sockaddr *sa;
-	struct icbd_dnsquery q;
-	ssize_t res;
-	int gerr;
-
-	if (event != EV_READ)
-		return;
-
-	do
-		res = read(fd, &q, sizeof q);
-	while (res == -1 && errno == EINTR);
-	if (res == -1 && errno == EAGAIN)
-		return;
-	if (res < (ssize_t)sizeof q) {
-		syslog(LOG_ERR, "dns_dispatch read: %m");
-		/* disable dns resolver */
-		dodns = 0;
-		return;
-	}
-
-	sa = (struct sockaddr *)&q.u.req;
-	if ((gerr = getnameinfo(sa, sa->sa_len,
-	    host, sizeof host, NULL, 0, NI_NOFQDN))) {
-		syslog(LOG_ERR, "getnameinfo: %s", gai_strerror(gerr));
-		return;
-	}
-
-	if (verbose)
-		syslog(LOG_DEBUG, "dns_dispatch: resolved %s", host);
-
-	memcpy(&q.u.rep, host, sizeof host);
-	if (write(fd, &q, sizeof q) != sizeof q)
-		syslog(LOG_ERR, "dns_dispatch write: %m");
-}
-
-void
-dns_done(int fd, short event, void *arg __attribute__((unused)))
-{
-	struct icb_session *is;
-	struct icbd_dnsquery q;
-	ssize_t res;
-
-	if (event != EV_READ)
-		return;
-
-	do
-		res = read(fd, &q, sizeof q);
-	while (res == -1 && errno == EINTR);
-	if (res == -1 && errno == EAGAIN)
-		return;
-	if (res < (ssize_t)sizeof q) {
-		syslog(LOG_ERR, "dns_done read: %m");
-		return;
-	}
-
-	if ((is = icbd_session_lookup(q.sid)) == NULL) {
-		syslog(LOG_DEBUG, "failed to find session %llu", q.sid);
-		return;
-	}
-
-	if (verbose)
-		syslog(LOG_DEBUG, "icbd_dns: resolved %s to %s",
-		    is->host, q.u.rep);
-
-	/* XXX */
-	if (strcmp(q.u.rep, "localhost") == 0)
-		strlcpy(is->host, "unknown", ICB_MAXHOSTLEN);
-	else if (strlen(q.u.rep) < ICB_MAXHOSTLEN)
-		strlcpy(is->host, q.u.rep, ICB_MAXHOSTLEN);
-}
-
-void
-dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
-{
-	struct icbd_dnsquery q;
+	struct async *as;
 
 	if (!dodns)
 		return;
@@ -203,11 +72,64 @@ dns_rresolv(struct icb_session *is, struct sockaddr_storage *ss)
 	if (verbose)
 		syslog(LOG_DEBUG, "resolving: %s", is->host);
 
-	memset(&q, 0, sizeof q);
-	q.sid = is->id;
-	memcpy(&q.u.req, ss, sizeof *ss);
-	if (write(dns_pipe, &q, sizeof q) != sizeof q) {
-		syslog(LOG_ERR, "dns_rresolv write: %m");
-		exit(EX_OSERR);
+	as = getnameinfo_async(sa, sa->sa_len, is->hostname,
+	    sizeof is->hostname, NULL, 0, NI_NOFQDN, NULL);
+	async_run_event(as, dns_done, is);
+}
+
+/* Generic libevent glue for asr */
+
+struct async_event {
+	struct async	*async;
+	struct event	 ev;
+	void		(*callback)(int, struct async_res *, void *);
+	void		*arg;
+};
+
+void async_event_dispatch(int, short, void *);
+
+struct async_event *
+async_run_event(struct async * async,
+    void (*cb)(int, struct async_res *, void *), void *arg)
+{
+	struct async_event	*aev;
+	struct timeval		 tv;
+
+	aev = calloc(1, sizeof *aev);
+	if (aev == NULL)
+		return (NULL);
+	aev->async = async;
+	aev->callback = cb;
+	aev->arg = arg;
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+	evtimer_set(&aev->ev, async_event_dispatch, aev);
+	evtimer_add(&aev->ev, &tv);
+	return (aev);
+}
+
+void
+async_event_dispatch(int fd __attribute__((__unused__)),
+    short ev __attribute__((__unused__)), void *arg)
+{
+	struct async_event	*aev = arg;
+	struct async_res	 ar;
+	int			 r;
+	struct timeval		 tv;
+
+	while ((r = asr_async_run(aev->async, &ar)) == ASYNC_YIELD)
+		aev->callback(r, &ar, aev->arg);
+
+	event_del(&aev->ev);
+	if (r == ASYNC_COND) {
+		event_set(&aev->ev, ar.ar_fd,
+			  ar.ar_cond == ASYNC_READ ? EV_READ : EV_WRITE,
+			  async_event_dispatch, aev);
+		tv.tv_sec = ar.ar_timeout / 1000;
+		tv.tv_usec = (ar.ar_timeout % 1000) * 1000;
+		event_add(&aev->ev, &tv);
+	} else { /* ASYNC_DONE */
+		aev->callback(r, &ar, aev->arg);
+		free(aev);
 	}
 }

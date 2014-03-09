@@ -38,6 +38,7 @@
 #include <event.h>
 #include <errno.h>
 #include <err.h>
+#include <resolv.h>
 
 #include "icb.h"
 #include "icbd.h"
@@ -230,8 +231,8 @@ main(int argc, char *argv[])
 	/* start the logger service */
 	logger_init();
 
-	/* start a dns resolver thread */
-	dns_init();
+	/* initialize resolver */
+	res_init();
 
 	if (!foreground)
 		icbd_restrict();
@@ -635,5 +636,5 @@ getpeerinfo(struct icb_session *is)
 	    (void *)&sin->sin_addr : (void *)&sin6->sin6_addr,
 	    is->host, sizeof is->host);
 
-	dns_rresolv(is, &ss);
+	dns_rresolv(is, (struct sockaddr *)&ss);
 }

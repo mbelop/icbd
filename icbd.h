@@ -29,9 +29,8 @@ void		icbd_modupdate(void);
 time_t		getmonotime(void);
 
 /* dns.c */
-struct sockaddr_storage;
-int		dns_init(void);
-void		dns_rresolv(struct icb_session *, struct sockaddr_storage *);
+struct sockaddr;
+void		dns_rresolv(struct icb_session *, struct sockaddr *);
 
 /* logger.c */
 int		logger_init(void);
