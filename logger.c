@@ -70,13 +70,13 @@ logger_init(void)
 	int pipes[2];
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipes) == -1) {
-		syslog(LOG_ERR, "socketpair: %m");
+		syslog(LOG_ERR, "%s: socketpair: %m", __func__);
 		exit(EX_OSERR);
 	}
 
 	switch (fork()) {
 	case -1:
-		syslog(LOG_ERR, "fork: %m");
+		syslog(LOG_ERR, "%s: fork: %m", __func__);
 		exit(EX_OSERR);
 	case 0:
 		break;
@@ -91,7 +91,8 @@ logger_init(void)
 	close(pipes[0]);
 
 	if ((pw = getpwnam(ICBD_USER)) == NULL) {
-		syslog(LOG_ERR, "No passwd entry for %s", ICBD_USER);
+		syslog(LOG_ERR, "%s: No passwd entry for %s", __func__,
+		    ICBD_USER);
 		exit(EX_NOUSER);
 	}
 
@@ -100,17 +101,17 @@ logger_init(void)
 		exit(EX_NOPERM);
 
 	if (chroot(pw->pw_dir) < 0) {
-		syslog(LOG_ERR, "%s: %m", pw->pw_dir);
+		syslog(LOG_ERR, "%s: %s: %m", __func__, pw->pw_dir);
 		exit(EX_UNAVAILABLE);
 	}
 
 	if (chdir("/") < 0) {
-		syslog(LOG_ERR, "chdir: %m");
+		syslog(LOG_ERR, "%s: chdir: %m", __func__);
 		exit(EX_UNAVAILABLE);
 	}
 
 	if (setuid(pw->pw_uid) < 0) {
-		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
+		syslog(LOG_ERR, "%s: %d: %m", __func__, pw->pw_uid);
 		exit(EX_NOPERM);
 	}
 
@@ -119,11 +120,11 @@ logger_init(void)
 	/* event for message processing */
 	if ((bev = bufferevent_new(pipes[1], logger_dispatch, NULL,
 	    logger_ioerr, NULL)) == NULL) {
-		syslog(LOG_ERR, "bufferevent_new: %m");
+		syslog(LOG_ERR, "%s: bufferevent_new: %m", __func__);
 		exit(EX_UNAVAILABLE);
 	}
 	if (bufferevent_enable(bev, EV_READ)) {
-		syslog(LOG_ERR, "bufferevent_enable: %m");
+		syslog(LOG_ERR, "%s: bufferevent_enable: %m", __func__);
 		bufferevent_free(bev);
 		exit(EX_UNAVAILABLE);
 	}
@@ -145,7 +146,7 @@ logger_ioerr(struct bufferevent *bev __attribute__((__unused__)), short what,
 		cause = "eof";
 	else if (what & EVBUFFER_ERROR)
 		cause = what & EVBUFFER_READ ? "read" : "write";
-	syslog(LOG_ERR, "logger_ioerr: %s", cause ? cause : "unknown");
+	syslog(LOG_ERR, "%s: %s", __func__, cause ? cause : "unknown");
 	exit(EX_IOERR);
 }
 
@@ -219,21 +220,23 @@ logger_open(char *group)
 	FILE *fp = NULL;
 
 	/* make sure not to overflow the logfiles table */
-	if (nlogfiles == sizeof logfiles / sizeof logfiles[0])
+	if (nlogfiles == nitems(logfiles)) {
+		syslog(LOG_NOTICE, "%s: logfiles table is full", __func__);
 		return (NULL);
+	}
 	snprintf(path, sizeof path, "%s/%s", logprefix, group);
 	if (mkdir(path, 0755) < 0 && errno != EEXIST) {
-		syslog(LOG_ERR, "%s: %m", group);
+		syslog(LOG_ERR, "%s: %s: %m", __func__, group);
 		return (NULL);
 	}
 	snprintf(path, sizeof path, "%s/%s/%s", logprefix, group, file_ts);
 	if ((fp = fopen(path, "a")) == NULL) {
-		syslog(LOG_ERR, "%s: %m", path);
+		syslog(LOG_ERR, "%s: %s: %m", __func__, path);
 		return (NULL);
 	}
 	setvbuf(fp, NULL, _IOLBF, 0);
 	if (verbose)
-		syslog(LOG_DEBUG, "logger_open: %s", path);
+		syslog(LOG_NOTICE, "%s: %s", __func__, path);
 	strlcpy(logfiles[nlogfiles].group, group, ICB_MAXGRPLEN);
 	logfiles[nlogfiles++].fp = fp;
 	return (fp);
@@ -263,7 +266,7 @@ logger(char *group, char *nick, char *what)
 	iov[1].iov_len = e.length;
 
 	if (writev(logger_pipe, iov, 2) == -1)
-		syslog(LOG_ERR, "logger write: %m");
+		syslog(LOG_ERR, "%s: %m", __func__);
 }
 
 void
@@ -279,8 +282,8 @@ logger_tick(void)
 	time(&t);
 	tm = gmtime(&t);
 	if (last_mon != tm->tm_mon) {
-		snprintf(file_ts, sizeof file_ts, "%04d-%02d", tm->tm_year +
-		    1900, tm->tm_mon + 1);
+		snprintf(file_ts, sizeof file_ts, "%04d-%02d",
+		    tm->tm_year + 1900, tm->tm_mon + 1);
 		last_mon = tm->tm_mon;
 		/* rotate log files */
 		for (i = 0; i < nlogfiles; i++) {
@@ -299,7 +302,7 @@ logger_tick(void)
 	snprintf(line_ts, sizeof line_ts, "%02d:%02d", tm->tm_hour,
 	    tm->tm_min);
 	if (evtimer_add(&ev_tick, &tv) < 0) {
-		syslog(LOG_ERR, "evtimer_add: %m");
+		syslog(LOG_ERR, "%s: evtimer_add: %m", __func__);
 		exit (EX_UNAVAILABLE);
 	}
 }
