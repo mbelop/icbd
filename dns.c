@@ -36,10 +36,9 @@
 #include "icbd.h"
 
 struct async_event;
-struct async_event *
-		async_run_event(struct async *,
-		    void (*)(int, struct async_res *, void *), void *);
-void		dns_done(int, struct async_res *, void *);
+struct async_event *async_run_event(struct async *,
+    void (*)(int, struct async_res *, void *), void *);
+void dns_done(int, struct async_res *, void *);
 
 extern int dodns;
 
@@ -49,7 +48,7 @@ dns_done(int ev __attribute__((__unused__)), struct async_res *ar, void *arg)
 	struct icb_session *is = arg;
 
 	if (ar->ar_gai_errno == 0) {
-		syslog(LOG_DEBUG, "dns resolved %s to %s", is->host,
+		icbd_log(is, LOG_DEBUG, "dns resolved %s to %s", is->host,
 		    is->hostname);
 		if (strncmp(is->hostname, "localhost",
 		    sizeof "localhost" - 1) == 0)
@@ -57,7 +56,7 @@ dns_done(int ev __attribute__((__unused__)), struct async_res *ar, void *arg)
 		else if (strlen(is->hostname) < ICB_MAXHOSTLEN)
 			strlcpy(is->host, is->hostname, ICB_MAXHOSTLEN);
 	} else
-		syslog(LOG_WARNING, "dns resolution failed: %s",
+		icbd_log(is, LOG_WARNING, "dns resolution failed: %s",
 		    gai_strerror(ar->ar_gai_errno));
 }
 
@@ -70,7 +69,7 @@ dns_rresolv(struct icb_session *is, struct sockaddr *sa)
 		return;
 
 	if (verbose)
-		syslog(LOG_DEBUG, "resolving: %s", is->host);
+		icbd_log(is, LOG_DEBUG, "resolving: %s", is->host);
 
 	as = getnameinfo_async(sa, sa->sa_len, is->hostname,
 	    sizeof is->hostname, NULL, 0, NI_NOFQDN, NULL);
