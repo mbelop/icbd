@@ -25,6 +25,7 @@
 #include <event.h>
 
 #include "icb.h"
+#include "icbd.h"
 
 extern int creategroups;
 
@@ -143,7 +144,7 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 	/* okay, here we go, but first, be polite and notify a user */
 	icb_status(s, STATUS_BOOT, "%s booted you", is->nick);
 	icb_status_group(s->group, s, STATUS_BOOT, "%s was booted", s->nick);
-	icb_drop(s, "booted");
+	icbd_drop(s, "booted");
 }
 
 void
@@ -174,7 +175,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 				icb_error(is, "Can't create group");
 				return;
 			}
-			icb_log(NULL, LOG_DEBUG, "%s created group %s",
+			icbd_log(NULL, LOG_DEBUG, "%s created group %s",
 			    is->nick, group);
 		}
 	}

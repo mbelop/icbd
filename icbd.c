@@ -64,7 +64,7 @@ void icbd_dispatch(struct bufferevent *, void *);
 void icbd_log(struct icb_session *, int, const char *, ...);
 void icbd_grplist(char *);
 void icbd_restrict(void);
-void icbd_write(struct icb_session *, char *, ssize_t);
+void icbd_send(struct icb_session *, char *, ssize_t);
 
 struct icbd_listener {
 	struct event ev, pause;
@@ -73,13 +73,12 @@ struct icbd_listener {
 int
 main(int argc, char *argv[])
 {
-	struct icbd_callbacks ic = { icbd_drop, icbd_log, icbd_write };
 	const char *cause = NULL;
 	int ch, nsocks = 0, save_errno = 0;
 	int inet4 = 0, inet6 = 0;
 
 	/* init group lists before calling icb_addgroup */
-	icb_init(&ic);
+	icb_init();
 
 	while ((ch = getopt(argc, argv, "46CdG:M:nL:S:v")) != -1)
 		switch (ch) {
@@ -390,7 +389,7 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 }
 
 void
-icbd_write(struct icb_session *is, char *buf, ssize_t size)
+icbd_send(struct icb_session *is, char *buf, ssize_t size)
 {
 	if (bufferevent_write(is->bev, buf, size) == -1)
 		syslog(LOG_ERR, "bufferevent_write: %m");

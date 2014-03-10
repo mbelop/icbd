@@ -42,12 +42,8 @@ char  *icb_nextfield(char **, int);
  *  icb_init: initializes pointers to callbacks
  */
 void
-icb_init(struct icbd_callbacks *ic)
+icb_init(void)
 {
-	icb_drop = ic->drop;
-	icb_log = ic->log;
-	icb_send = ic->send;
-
 	LIST_INIT(&groups);
 
 	if (strlen(srvname) == 0)
@@ -97,12 +93,12 @@ icb_input(struct icb_session *is)
 		cmd = icb_nextfield(&msg, 1);
 		if (strlen(cmd) > 0 && cmd[0] == 'w') {
 			icb_error(is, "Command not implemented");
-			icb_drop(is, NULL);
+			icbd_drop(is, NULL);
 			return;
 		}
 		if (strlen(cmd) == 0 || strcmp(cmd, "login") != 0) {
 			icb_error(is, "Malformed login packet");
-			icb_drop(is, NULL);
+			icbd_drop(is, NULL);
 			return;
 		}
 		icb_login(is, group, nick, client);
@@ -151,7 +147,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	if (!nick || strlen(nick) == 0 ||
 	    icb_vis(is->nick, nick, ICB_MAXNICKLEN, VIS_SP)) {
 		icb_error(is, "Invalid nick");
-		icb_drop(is, NULL);
+		icbd_drop(is, NULL);
 		return;
 	}
 	if (!grp || strlen(grp) == 0)
@@ -165,21 +161,21 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	if (ig == NULL) {
 		if (!creategroups) {
 			icb_error(is, "Invalid group %s", group);
-			icb_drop(is, NULL);
+			icbd_drop(is, NULL);
 			return;
 		} else {
 			if ((ig = icb_addgroup(is, group, NULL)) == NULL) {
 				icb_error(is, "Can't create group %s", group);
 				return;
 			}
-			icb_log(NULL, LOG_DEBUG, "%s created group %s",
+			icbd_log(NULL, LOG_DEBUG, "%s created group %s",
 			    is->nick, group);
 		}
 	}
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (strcmp(s->nick, is->nick) == 0) {
 			icb_error(is, "Nick is already in use");
-			icb_drop(is, NULL);
+			icbd_drop(is, NULL);
 			return;
 		}
 	}
@@ -237,7 +233,7 @@ icb_groupmsg(struct icb_session *is, char *msg)
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (s == is)
 			continue;
-		icb_send(s, buf, buflen + 1);
+		icbd_send(s, buf, buflen + 1);
 	}
 }
 
@@ -320,7 +316,7 @@ icb_cmdout(struct icb_session *is, int type, char *outmsg)
 		otype = "wl";
 		break;
 	default:
-		icb_log(is, LOG_ERR, "unknown cmdout type");
+		icbd_log(is, LOG_ERR, "unknown cmdout type %d", type);
 		return;
 	}
 	if (outmsg)
@@ -366,7 +362,7 @@ icb_status(struct icb_session *is, int type, const char *fmt, ...)
 	buflen += vsnprintf(&buf[buflen], sizeof buf - buflen, fmt, ap);
 	buf[0] = buflen;
 	va_end(ap);
-	icb_send(is, buf, buflen + 1);
+	icbd_send(is, buf, buflen + 1);
 }
 
 /*
@@ -389,7 +385,7 @@ icb_status_group(struct icb_group *ig, struct icb_session *ex, int type,
 		icb_status(s, type, buf);
 	}
 	logger(ig->name, "", buf);
-	icb_log(NULL, LOG_DEBUG, "%s", buf);
+	icbd_log(NULL, LOG_DEBUG, "%s", buf);
 	va_end(ap);
 }
 
@@ -408,8 +404,8 @@ icb_error(struct icb_session *is, const char *fmt, ...)
 	va_end(ap);
 	buf[0] = ++buflen; /* account for ICB_M_ERROR */
 	buf[1] = ICB_M_ERROR;
-	icb_send(is, buf, buflen + 1);
-	icb_log(is, LOG_DEBUG, "%s", buf + 2);
+	icbd_send(is, buf, buflen + 1);
+	icbd_log(is, LOG_DEBUG, "%s", buf + 2);
 }
 
 /*
@@ -619,7 +615,7 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
 	buflen += vsnprintf(&buf[1], sizeof buf - 1, fmt, ap);
 	va_end(ap);
 	buf[0] = buflen;
-	icb_send(is, buf, buflen + 1);
+	icbd_send(is, buf, buflen + 1);
 }
 
 /*

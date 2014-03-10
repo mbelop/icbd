@@ -110,18 +110,12 @@ struct icb_group {
 
 LIST_HEAD(icb_grlist, icb_group) groups;
 
-struct icbd_callbacks {
-	void 	(*drop)(struct icb_session *, char *);
-	void 	(*log)(struct icb_session *, int, const char *, ...);
-	void 	(*send)(struct icb_session *, char *, ssize_t);
-};
-
 #ifndef nitems
 #define nitems(_a)	(sizeof((_a)) / sizeof((_a)[0]))
 #endif
 
 /* cmd.c */
-void *icb_cmd_lookup(char *);
+void *		icb_cmd_lookup(char *);
 
 /* icb.c */
 struct icb_group *
@@ -129,7 +123,7 @@ struct icb_group *
 void		icb_cmdout(struct icb_session *, int, char *);
 void		icb_delgroup(struct icb_group *);
 void		icb_error(struct icb_session *, const char *, ...);
-void		icb_init(struct icbd_callbacks *);
+void		icb_init(void);
 void		icb_input(struct icb_session *);
 inline int	icb_ismod(struct icb_group *, struct icb_session *);
 int		icb_modpermit(struct icb_session *, int);
@@ -144,8 +138,3 @@ void		icb_status_group(struct icb_group *, struct icb_session *,
 		    int, const char *, ...);
 void		icb_who(struct icb_session *, struct icb_group *);
 int		icb_vis(char *, const char *, size_t, int);
-
-/* callbacks from icbd.c */
-void		(*icb_drop)(struct icb_session *, char *);
-void		(*icb_log)(struct icb_session *, int, const char *, ...);
-void		(*icb_send)(struct icb_session *, char *, ssize_t);

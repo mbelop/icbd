@@ -23,8 +23,9 @@
 extern int verbose;
 
 /* icbd.c */
-inline struct icb_session *
-		icbd_session_lookup(uint64_t);
+void		icbd_drop(struct icb_session *, char *);
+void		icbd_log(struct icb_session *, int, const char *, ...);
+void		icbd_send(struct icb_session *, char *, ssize_t);
 void		icbd_modupdate(void);
 time_t		getmonotime(void);
 
