@@ -36,7 +36,7 @@ void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
 void   icb_login(struct icb_session *, char *, char *, char *);
 int    icb_dowho(struct icb_session *, struct icb_group *);
-char  *icb_nextfield(char **);
+char  *icb_nextfield(char **, int);
 
 /*
  *  icb_init: initializes pointers to callbacks
@@ -91,10 +91,10 @@ icb_input(struct icb_session *is)
 	case ICB_M_LOGIN: {
 		char *nick, *group, *client, *cmd;
 
-		client = icb_nextfield(&msg);
-		nick = icb_nextfield(&msg);
-		group = icb_nextfield(&msg);
-		cmd = icb_nextfield(&msg);
+		client = icb_nextfield(&msg, 1);
+		nick = icb_nextfield(&msg, 1);
+		group = icb_nextfield(&msg, 1);
+		cmd = icb_nextfield(&msg, 1);
 		if (strlen(cmd) > 0 && cmd[0] == 'w') {
 			icb_error(is, "Command not implemented");
 			icb_drop(is, NULL);
@@ -111,15 +111,15 @@ icb_input(struct icb_session *is)
 	case ICB_M_OPEN: {
 		char *grpmsg;
 
-		grpmsg = icb_nextfield(&msg);
+		grpmsg = icb_nextfield(&msg, 0);
 		icb_groupmsg(is, grpmsg);
 		break;
 	}
 	case ICB_M_COMMAND: {
 		char *cmd, *arg;
 
-		cmd = icb_nextfield(&msg);
-		arg = icb_nextfield(&msg);
+		cmd = icb_nextfield(&msg, 1);
+		arg = icb_nextfield(&msg, 0);
 		icb_command(is, cmd, arg);
 		break;
 	}
@@ -587,7 +587,7 @@ icb_pass(struct icb_group *ig, struct icb_session *from,
  *                 cleans up trailing spaces
  */
 char *
-icb_nextfield(char **buf)
+icb_nextfield(char **buf, int notrspace)
 {
 	char *start = *buf;
 	char *end = NULL;
@@ -600,7 +600,7 @@ icb_nextfield(char **buf)
 		(*buf)++;
 	} else
 		end = *buf;
-	while (end && *(--end) == ' ' && end > start)
+	while (notrspace && end && *(--end) == ' ' && end > start)
 		*end = '\0';
 	return (start);
 }
