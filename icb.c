@@ -74,7 +74,7 @@ void
 icb_input(struct icb_session *is)
 {
 	char *msg = is->buffer;
-	char type;
+	unsigned char type;
 
 	is->last = getmonotime();
 	type = msg[0];
@@ -129,7 +129,7 @@ icb_input(struct icb_session *is)
 		break;
 	default:
 		/* everything else is not valid */
-		icb_error(is, "Bummer. This is a bummer, man.");
+		icb_error(is, "Undefined message type %u", type);
 	}
 }
 
