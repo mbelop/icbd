@@ -341,6 +341,7 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 {
 	struct icb_session *is = (struct icb_session *)arg;
 	unsigned char length;
+	size_t res;
 
 	while (EVBUFFER_LENGTH(EVBUFFER_INPUT(bev)) > 0) {
 		if (is->length == 0) {
@@ -364,8 +365,9 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 			is->rlen = 0;
 		}
 		/* read as much as we can */
-		is->rlen += bufferevent_read(bev, &is->buffer[is->rlen],
-		    is->length);
+		res = bufferevent_read(bev, &is->buffer[is->rlen],
+		    is->length - is->rlen);
+		is->rlen += res;
 #ifdef DEBUG
 		{
 			int i;
