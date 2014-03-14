@@ -110,6 +110,8 @@ logger_init(void)
 		exit(EX_UNAVAILABLE);
 	}
 
+	chdir (ICBD_HOME);
+
 	if (setuid(pw->pw_uid) < 0) {
 		syslog(LOG_ERR, "%s: %d: %m", __func__, pw->pw_uid);
 		exit(EX_NOPERM);

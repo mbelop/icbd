@@ -469,10 +469,12 @@ icbd_restrict(void)
 		exit(EX_UNAVAILABLE);
 	}
 
-	if (chdir("/" ICBD_HOME) < 0) {
+	if (chdir("/") < 0) {
 		syslog(LOG_ERR, "/" ICBD_HOME ": %m");
 		exit(EX_UNAVAILABLE);
 	}
+
+	chdir(ICBD_HOME);
 
 	if (setuid(pw->pw_uid) < 0) {
 		syslog(LOG_ERR, "%d: %m", pw->pw_uid);
