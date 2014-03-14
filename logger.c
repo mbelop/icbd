@@ -182,9 +182,14 @@ logger_dispatch(struct bufferevent *bev, void *arg __attribute__((unused)))
 			if (nread < sizeof *e)
 				return;
 		}
+		if (e->length >= ICB_MSGSIZE) {
+			syslog(LOG_ERR, "%s: message too big: %lu", __func__,
+			    e->length);
+			exit(EX_DATAERR);
+		}
 		/* fetch the message */
 		res = bufferevent_read(bev, &buf[nread],
-		    MIN(e->length, ICB_MSGSIZE));
+		    e->length - (nread - sizeof *e));
 		nread += res;
 #ifdef DEBUG
 		{
@@ -194,7 +199,7 @@ logger_dispatch(struct bufferevent *bev, void *arg __attribute__((unused)))
 			printf("\n");
 		}
 #endif
-		if (nread < e->length)
+		if (nread - sizeof *e < e->length)
 			return;
 		/* terminate the buffer */
 		m[MIN(nread - sizeof *e, ICB_MSGSIZE - 1)] = '\0';
@@ -303,6 +308,6 @@ logger_tick(void)
 	    tm->tm_min);
 	if (evtimer_add(&ev_tick, &tv) < 0) {
 		syslog(LOG_ERR, "%s: evtimer_add: %m", __func__);
-		exit (EX_UNAVAILABLE);
+		exit(EX_UNAVAILABLE);
 	}
 }
