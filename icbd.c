@@ -469,8 +469,8 @@ icbd_restrict(void)
 		exit(EX_UNAVAILABLE);
 	}
 
-	if (chdir("/") < 0) {
-		syslog(LOG_ERR, "/: %m");
+	if (chdir("/" ICBD_HOME) < 0) {
+		syslog(LOG_ERR, "/" ICBD_HOME ": %m");
 		exit(EX_UNAVAILABLE);
 	}
 

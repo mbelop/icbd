@@ -15,6 +15,7 @@
  */
 
 #define ICBD_USER	"_icbd"
+#define ICBD_HOME	"core"
 
 #define TCP_BACKLOG	5
 
