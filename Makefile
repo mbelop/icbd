@@ -10,9 +10,6 @@ CFLAGS+=	-W -Wall -Werror
 CFLAGS+=	-Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations
 CFLAGS+=	-Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
 
-# hook up asynchronous resolver
-CFLAGS+=	-I${BSDSRCDIR}/lib/libc/asr
-
 DPADD=		${LIBEVENT}
 LDADD=		-levent
 
