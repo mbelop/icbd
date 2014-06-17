@@ -1,10 +1,6 @@
 /*
  * Copyright (c) 2014 Mike Belopuhov
- *
- * ASR implementation and OpenSMTPD integration are copyright
- * Copyright (c) 2008 Gilles Chehade <gilles@poolp.org>
- * Copyright (c) 2009 Jacek Masiulaniec <jacekm@dobremiasto.net>
- * Copyright (c) 2011-2012 Eric Faurot <eric@faurot.net>
+ * Copyright (c) 2014 Eric Faurot <eric@faurot.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -36,9 +32,6 @@
 #include "icb.h"
 #include "icbd.h"
 
-struct async_event;
-struct async_event *async_run_event(struct asr_query *,
-    void (*)(struct asr_result *, void *), void *);
 void dns_done(struct asr_result *, void *);
 
 extern int dodns;
@@ -74,59 +67,5 @@ dns_rresolv(struct icb_session *is, struct sockaddr *sa)
 
 	as = getnameinfo_async(sa, sa->sa_len, is->hostname,
 	    sizeof is->hostname, NULL, 0, NI_NOFQDN, NULL);
-	async_run_event(as, dns_done, is);
-}
-
-/* Generic libevent glue for asr */
-
-struct async_event {
-	struct asr_query *async;
-	struct event	 ev;
-	void		(*callback)(struct asr_result *, void *);
-	void		*arg;
-};
-
-void async_event_dispatch(int, short, void *);
-
-struct async_event *
-async_run_event(struct asr_query *async,
-    void (*cb)(struct asr_result *, void *), void *arg)
-{
-	struct async_event	*aev;
-	struct timeval		 tv;
-
-	aev = calloc(1, sizeof *aev);
-	if (aev == NULL)
-		return (NULL);
-	aev->async = async;
-	aev->callback = cb;
-	aev->arg = arg;
-	tv.tv_sec = 0;
-	tv.tv_usec = 0;
-	evtimer_set(&aev->ev, async_event_dispatch, aev);
-	evtimer_add(&aev->ev, &tv);
-	return (aev);
-}
-
-void
-async_event_dispatch(int fd __attribute__((__unused__)),
-    short ev __attribute__((__unused__)), void *arg)
-{
-	struct async_event	*aev = arg;
-	struct asr_result	 ar;
-	struct timeval		 tv;
-
-	event_del(&aev->ev);
-
-	if (asr_run(aev->async, &ar) == 0) {
-		event_set(&aev->ev, ar.ar_fd,
-		    ar.ar_cond == ASR_WANT_READ ? EV_READ : EV_WRITE,
-		    async_event_dispatch, aev);
-		tv.tv_sec = ar.ar_timeout / 1000;
-		tv.tv_usec = (ar.ar_timeout % 1000) * 1000;
-		event_add(&aev->ev, &tv);
-	} else { /* done */
-		aev->callback(&ar, aev->arg);
-		free(aev);
-	}
+	event_asr_run(as, dns_done, is);
 }
