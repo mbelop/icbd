@@ -89,11 +89,14 @@ struct icb_session {
 #define SETF(t, f)		 ((t) |= (f))
 #define CLRF(t, f)		 ((t) &= ~(f))
 #define ISSETF(t, f)		 ((t) & (f))
-#define ICB_SF_PROTOSENT	 0x01
-#define ICB_SF_LOGGEDIN		 0x02
-#define ICB_SF_NOGROUP		 0x08
-#define ICB_SF_NOBEEP		 0x10
-#define ICB_SF_NOBEEP2		 0x20
+#define ICB_SF_PROTOSENT	 0x0001
+#define ICB_SF_LOGGEDIN		 0x0002
+#define ICB_SF_NOGROUP		 0x0008
+#define ICB_SF_NOBEEP		 0x0010
+#define ICB_SF_NOBEEP2		 0x0020
+
+#define ICB_SF_DNSINPROGRESS	 0x1000
+#define ICB_SF_PENDINGDROP	 0x2000
 
 	/* in-group linkage */
 	LIST_ENTRY(icb_session)	 entry;

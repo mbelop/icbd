@@ -55,6 +55,13 @@ dns_done_host(struct asr_result *ar, void *arg)
 	} else
 		icbd_log(is, LOG_WARNING, "dns resolution failed: %s",
 		    gai_strerror(ar->ar_gai_errno));
+
+	if (ISSETF(is->flags, ICB_SF_PENDINGDROP)) {
+		free(is);
+		return;
+	}
+
+	CLRF(is->flags, ICB_SF_DNSINPROGRESS);
 }
 
 void
@@ -64,6 +71,11 @@ dns_done_reverse(struct asr_result *ar, void *arg)
 	struct asr_query *as;
 	struct addrinfo	hints;
 
+	if (ISSETF(is->flags, ICB_SF_PENDINGDROP)) {
+		free(is);
+		return;
+	}
+
 	if (ar->ar_gai_errno == 0) {
 		icbd_log(is, LOG_DEBUG, "reverse dns resolved %s to %s",
 		    is->host, is->hostname);
@@ -72,9 +84,11 @@ dns_done_reverse(struct asr_result *ar, void *arg)
 		hints.ai_family = PF_UNSPEC;
 		as = getaddrinfo_async(is->hostname, NULL, &hints, NULL);
 		event_asr_run(as, dns_done_host, is);
-	} else
+	} else {
 		icbd_log(is, LOG_WARNING, "reverse dns resolution failed: %s",
 		    gai_strerror(ar->ar_gai_errno));
+		CLRF(is->flags, ICB_SF_DNSINPROGRESS);
+	}
 }
 
 void
@@ -84,6 +98,8 @@ dns_resolve(struct icb_session *is, struct sockaddr *sa)
 
 	if (!dodns)
 		return;
+
+	SETF(is->flags, ICB_SF_DNSINPROGRESS);
 
 	if (verbose)
 		icbd_log(is, LOG_DEBUG, "resolving: %s", is->host);

@@ -419,7 +419,10 @@ icbd_drop(struct icb_session *is, char *reason)
 	(void)evbuffer_write(EVBUFFER_OUTPUT(is->bev), EVBUFFER_FD(is->bev));
 	(void)close(EVBUFFER_FD(is->bev));
 	bufferevent_free(is->bev);
-	free(is);
+	if (!ISSETF(is->flags, ICB_SF_DNSINPROGRESS))
+		free(is);
+	else
+		SETF(is->flags, ICB_SF_PENDINGDROP);
 }
 
 void
