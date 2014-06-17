@@ -385,7 +385,8 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 		/* null-terminate the data */
 		is->buffer[MIN(is->rlen, ICB_MSGSIZE - 1)] = '\0';
 		/* process the message in full */
-		icb_input(is);
+		if (icb_input(is))
+			return;
 		is->rlen = is->length = 0;
 	}
 }

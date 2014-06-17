@@ -34,7 +34,7 @@ extern char srvname[MAXHOSTNAMELEN];
 
 void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
-void   icb_login(struct icb_session *, char *, char *, char *);
+int    icb_login(struct icb_session *, char *, char *, char *);
 int    icb_dowho(struct icb_session *, struct icb_group *);
 char  *icb_nextfield(char **, int);
 
@@ -70,18 +70,19 @@ icb_start(struct icb_session *is)
 /*
  *  icb_input: main input processing routine
  */
-void
+int
 icb_input(struct icb_session *is)
 {
 	char *msg = is->buffer;
 	unsigned char type;
+	int res = 0;
 
 	is->last = getmonotime();
 	type = msg[0];
 	msg++;
 	if (!ISSETF(is->flags, ICB_SF_LOGGEDIN) && type != ICB_M_LOGIN) {
 		icb_error(is, "Not logged in");
-		return;
+		return (0);
 	}
 	switch (type) {
 	case ICB_M_LOGIN: {
@@ -94,14 +95,14 @@ icb_input(struct icb_session *is)
 		if (strlen(cmd) > 0 && cmd[0] == 'w') {
 			icb_error(is, "Command not implemented");
 			icbd_drop(is, NULL);
-			return;
+			return (1);
 		}
 		if (strlen(cmd) == 0 || strcmp(cmd, "login") != 0) {
 			icb_error(is, "Malformed login packet");
 			icbd_drop(is, NULL);
-			return;
+			return (1);
 		}
-		icb_login(is, group, nick, client);
+		res = icb_login(is, group, nick, client);
 		break;
 	}
 	case ICB_M_OPEN: {
@@ -131,12 +132,13 @@ icb_input(struct icb_session *is)
 		/* everything else is not valid */
 		icb_error(is, "Undefined message type %u", type);
 	}
+	return (res);
 }
 
 /*
  *  icb_login: handles login ('a') packets
  */
-void
+int
 icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 {
 	char *defgrp = "1";
@@ -148,7 +150,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	    icb_vis(is->nick, nick, ICB_MAXNICKLEN, VIS_SP)) {
 		icb_error(is, "Invalid nick");
 		icbd_drop(is, NULL);
-		return;
+		return (1);
 	}
 	if (!grp || strlen(grp) == 0)
 		strlcpy(group, defgrp, ICB_MAXGRPLEN);
@@ -162,11 +164,11 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 		if (!creategroups) {
 			icb_error(is, "Invalid group %s", group);
 			icbd_drop(is, NULL);
-			return;
+			return (1);
 		} else {
 			if ((ig = icb_addgroup(is, group, NULL)) == NULL) {
 				icb_error(is, "Can't create group %s", group);
-				return;
+				return (0);
 			}
 			icbd_log(NULL, LOG_DEBUG, "%s created group %s",
 			    is->nick, group);
@@ -176,7 +178,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 		if (strcmp(s->nick, is->nick) == 0) {
 			icb_error(is, "Nick is already in use");
 			icbd_drop(is, NULL);
-			return;
+			return (1);
 		}
 	}
 
@@ -206,6 +208,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	if (strlen(ig->topic) > 0)
 		icb_status(is, STATUS_TOPIC, "Topic for %s is \"%s\"",
 		    ig->name, ig->topic);
+	return (0);
 }
 
 /*

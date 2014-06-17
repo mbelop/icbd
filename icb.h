@@ -124,7 +124,7 @@ void		icb_cmdout(struct icb_session *, int, char *);
 void		icb_delgroup(struct icb_group *);
 void		icb_error(struct icb_session *, const char *, ...);
 void		icb_init(void);
-void		icb_input(struct icb_session *);
+int		icb_input(struct icb_session *);
 inline int	icb_ismod(struct icb_group *, struct icb_session *);
 int		icb_modpermit(struct icb_session *, int);
 int		icb_pass(struct icb_group *, struct icb_session *,
