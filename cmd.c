@@ -140,6 +140,10 @@ icb_cmd_boot(struct icb_session *is, char *arg)
 		icb_status(is, STATUS_NOTIFY, "No such user");
 		return;
 	}
+	if (s == is) {
+		icb_error(is, "Just quit, would you?");
+		return;
+	}
 
 	/* okay, here we go, but first, be polite and notify a user */
 	icb_status(s, STATUS_BOOT, "%s booted you", is->nick);
