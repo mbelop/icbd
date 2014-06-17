@@ -607,5 +607,5 @@ getpeerinfo(struct icb_session *is)
 	    (void *)&sin->sin_addr : (void *)&sin6->sin6_addr,
 	    is->host, sizeof is->host);
 
-	dns_rresolv(is, (struct sockaddr *)&ss);
+	dns_resolve(is, (struct sockaddr *)&ss);
 }

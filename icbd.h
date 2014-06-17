@@ -32,7 +32,7 @@ time_t		getmonotime(void);
 
 /* dns.c */
 struct sockaddr;
-void		dns_rresolv(struct icb_session *, struct sockaddr *);
+void		dns_resolve(struct icb_session *, struct sockaddr *);
 
 /* logger.c */
 int		logger_init(void);
