@@ -15,6 +15,7 @@
  */
 
 #include <sys/queue.h>
+#include <sys/socket.h>
 
 /*
  * ICB packet has the following format: <length><type><data>
@@ -77,6 +78,7 @@ struct icb_session {
 	char			 host[ICB_MAXHOSTLEN];
 	char			 hostname[MAXHOSTNAMELEN];
 	char			 buffer[ICB_MSGSIZE];
+	struct sockaddr_storage	 ss;
 	struct event		 ev;
 	struct bufferevent	*bev;
 	struct icb_group	*group;

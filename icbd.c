@@ -585,18 +585,17 @@ getmonotime(void)
 void
 getpeerinfo(struct icb_session *is)
 {
-	struct sockaddr_storage ss;
-	struct sockaddr_in *sin = (struct sockaddr_in *)&ss;
-	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&ss;
-	socklen_t ss_len = sizeof ss;
+	struct sockaddr_in *sin = (struct sockaddr_in *)&is->ss;
+	struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)&is->ss;
+	socklen_t ss_len = sizeof is->ss;
 
-	bzero(&ss, sizeof ss);
-	if (getpeername(EVBUFFER_FD(is->bev), (struct sockaddr *)&ss,
+	bzero(&is->ss, sizeof is->ss);
+	if (getpeername(EVBUFFER_FD(is->bev), (struct sockaddr *)&is->ss,
 	    &ss_len) != 0)
 		return;
 
 	is->port = 0;
-	switch (ss.ss_family) {
+	switch (is->ss.ss_family) {
 	case AF_INET:
 		is->port = ntohs(sin->sin_port);
 		break;
@@ -606,9 +605,9 @@ getpeerinfo(struct icb_session *is)
 		break;
 	}
 
-	inet_ntop(ss.ss_family, ss.ss_family == AF_INET ?
+	inet_ntop(is->ss.ss_family, is->ss.ss_family == AF_INET ?
 	    (void *)&sin->sin_addr : (void *)&sin6->sin6_addr,
 	    is->host, sizeof is->host);
 
-	dns_resolve(is, (struct sockaddr *)&ss);
+	dns_resolve(is);
 }

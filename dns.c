@@ -34,6 +34,7 @@
 
 void dns_done_host(struct asr_result *, void *);
 void dns_done_reverse(struct asr_result *, void *);
+int  cmp_addr(struct sockaddr *, struct sockaddr *);
 
 extern int dodns;
 
@@ -41,20 +42,34 @@ void
 dns_done_host(struct asr_result *ar, void *arg)
 {
 	struct icb_session *is = arg;
+	struct addrinfo *res;
+	int found = 0;
 
-	if (ar->ar_addrinfo)
-		freeaddrinfo(ar->ar_addrinfo);
-
-	/* just check that there's no error */
 	if (ar->ar_gai_errno == 0) {
 		if (strncmp(is->hostname, "localhost",
 		    sizeof "localhost" - 1) == 0)
 			strlcpy(is->host, "unknown", ICB_MAXHOSTLEN);
-		else if (strlen(is->hostname) < ICB_MAXHOSTLEN)
-			strlcpy(is->host, is->hostname, ICB_MAXHOSTLEN);
+		else if (strlen(is->hostname) < ICB_MAXHOSTLEN) {
+			for (res = ar->ar_addrinfo; res; res = res->ai_next) {
+				if (cmp_addr(res->ai_addr, (struct sockaddr *)
+				    &is->ss) == 0) {
+					strlcpy(is->host, is->hostname,
+					    ICB_MAXHOSTLEN);
+					found = 1;
+					break;
+				}
+			}
+			if (!found)
+				icbd_log(is, LOG_WARNING, "hostname %s does "
+				   "not resolve back to connecting ip %s",
+				    is->hostname, is->host);
+		}
 	} else
 		icbd_log(is, LOG_WARNING, "dns resolution failed: %s",
 		    gai_strerror(ar->ar_gai_errno));
+
+	if (ar->ar_addrinfo)
+		freeaddrinfo(ar->ar_addrinfo);
 
 	if (ISSETF(is->flags, ICB_SF_PENDINGDROP)) {
 		free(is);
@@ -91,8 +106,27 @@ dns_done_reverse(struct asr_result *ar, void *arg)
 	}
 }
 
+int
+cmp_addr(struct sockaddr *a, struct sockaddr *b)
+{
+	if (a->sa_family != b->sa_family)
+		return (a->sa_family - b->sa_family);
+
+	if (a->sa_family == AF_INET)
+		return (((struct sockaddr_in *)a)->sin_addr.s_addr -
+		    ((struct sockaddr_in *)b)->sin_addr.s_addr);
+
+	if (a->sa_family == AF_INET6)
+		return (memcmp(&((struct sockaddr_in6 *)a)->sin6_addr,
+		    &((struct sockaddr_in6 *)b)->sin6_addr,
+		    sizeof (struct in6_addr)));
+
+	return -1;
+	
+}
+
 void
-dns_resolve(struct icb_session *is, struct sockaddr *sa)
+dns_resolve(struct icb_session *is)
 {
 	struct asr_query *as;
 
@@ -104,7 +138,8 @@ dns_resolve(struct icb_session *is, struct sockaddr *sa)
 	if (verbose)
 		icbd_log(is, LOG_DEBUG, "resolving: %s", is->host);
 
-	as = getnameinfo_async(sa, sa->sa_len, is->hostname,
+	as = getnameinfo_async((struct sockaddr *)&is->ss,
+	    ((struct sockaddr *)&is->ss)->sa_len, is->hostname,
 	    sizeof is->hostname, NULL, 0, NI_NOFQDN, NULL);
 	event_asr_run(as, dns_done_reverse, is);
 }
