@@ -429,6 +429,7 @@ icb_remove(struct icb_session *is, char *reason)
 			icb_status_group(is->group, NULL, STATUS_SIGNOFF,
 			    "%s (%s@%s) just left", is->nick, is->client,
 			    is->host);
+		is->group = NULL;
 	}
 }
 
