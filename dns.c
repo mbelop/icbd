@@ -45,6 +45,13 @@ dns_done_host(struct asr_result *ar, void *arg)
 	struct addrinfo *res;
 	int found = 0;
 
+	if (ISSETF(is->flags, ICB_SF_PENDINGDROP)) {
+		if (ar->ar_addrinfo)
+			freeaddrinfo(ar->ar_addrinfo);
+		free(is);
+		return;
+	}
+
 	if (ar->ar_gai_errno == 0) {
 		if (strncmp(is->hostname, "localhost",
 		    sizeof "localhost" - 1) == 0)
@@ -65,16 +72,11 @@ dns_done_host(struct asr_result *ar, void *arg)
 				    is->hostname, is->host);
 		}
 	} else
-		icbd_log(is, LOG_WARNING, "dns resolution failed: %s",
+		icbd_log(is, LOG_DEBUG, "dns resolution failed: %s",
 		    gai_strerror(ar->ar_gai_errno));
 
 	if (ar->ar_addrinfo)
 		freeaddrinfo(ar->ar_addrinfo);
-
-	if (ISSETF(is->flags, ICB_SF_PENDINGDROP)) {
-		free(is);
-		return;
-	}
 
 	CLRF(is->flags, ICB_SF_DNSINPROGRESS);
 }
@@ -100,7 +102,7 @@ dns_done_reverse(struct asr_result *ar, void *arg)
 		as = getaddrinfo_async(is->hostname, NULL, &hints, NULL);
 		event_asr_run(as, dns_done_host, is);
 	} else {
-		icbd_log(is, LOG_WARNING, "reverse dns resolution failed: %s",
+		icbd_log(is, LOG_DEBUG, "reverse dns resolution failed: %s",
 		    gai_strerror(ar->ar_gai_errno));
 		CLRF(is->flags, ICB_SF_DNSINPROGRESS);
 	}
@@ -122,7 +124,6 @@ cmp_addr(struct sockaddr *a, struct sockaddr *b)
 		    sizeof (struct in6_addr)));
 
 	return -1;
-	
 }
 
 void
