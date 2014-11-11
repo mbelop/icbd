@@ -630,7 +630,7 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 {
 	int si = 0, di = 0, td;
 
-	while ((size_t)di < dstsize && src[si] != '\0') {
+	while ((size_t)di < dstsize - 1 && src[si] != '\0') {
 		if (src[si] == '%')
 			dst[di++] = '%', dst[di] = '%';
 		else if (src[si] == ' ' && flags & VIS_SP)
@@ -644,6 +644,6 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 		}
 		si++, di++;
 	}
-	dst[MIN((size_t)di, dstsize)] = '\0';
+	dst[MIN((size_t)di, dstsize - 1)] = '\0';
 	return (0);
 }
