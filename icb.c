@@ -156,7 +156,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	if (!grp || strlen(grp) == 0)
 		strlcpy(group, defgrp, ICB_MAXGRPLEN);
 	else
-		icb_vis(group, grp, ICB_MAXNICKLEN, VIS_SP);
+		icb_vis(group, grp, ICB_MAXGRPLEN, VIS_SP);
 	LIST_FOREACH(ig, &groups, entry) {
 		if (strcmp(ig->name, group) == 0)
 			break;
