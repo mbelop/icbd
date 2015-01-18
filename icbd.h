@@ -19,6 +19,10 @@
 
 #define TCP_BACKLOG	5
 
+#ifndef MIN
+#define MIN(x, y)	((x) < (y) ? (x) : (y))
+#endif
+
 #define EVBUFFER_FD(x)	(EVENT_FD(&(x)->ev_read))
 
 extern int verbose;

@@ -14,8 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/queue.h>
+#include <netdb.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +31,7 @@
 #include "icbd.h"
 
 extern int creategroups;
-extern char srvname[MAXHOSTNAMELEN];
+extern char srvname[NI_MAXHOST];
 
 void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
@@ -49,7 +50,7 @@ icb_init(void)
 	if (strlen(srvname) == 0)
 		(void)gethostname(srvname, sizeof srvname);
 	/*
-	 * MAXHOSTNAMELEN is usually greater than what we
+	 * NI_MAXHOST is usually greater than what we
 	 * can actually send, hence truncation:
 	 */
 	if (strlen(srvname) > 200)
@@ -184,6 +185,8 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 
 	if (client && strlen(client) > 0)
 		icb_vis(is->client, client, sizeof is->client, VIS_SP);
+	else
+		strlcpy(is->client, is->nick, sizeof is->client);
 	is->group = ig;
 	is->login = time(NULL);
 	is->last = getmonotime();

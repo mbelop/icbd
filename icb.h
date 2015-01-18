@@ -76,7 +76,7 @@ struct icb_session {
 	char			 nick[ICB_MAXNICKLEN];
 	char			 client[ICB_MAXNICKLEN];
 	char			 host[ICB_MAXHOSTLEN];
-	char			 hostname[MAXHOSTNAMELEN];
+	char			 hostname[NI_MAXHOST];
 	char			 buffer[ICB_MSGSIZE];
 	struct sockaddr_storage	 ss;
 	struct event		 ev;
