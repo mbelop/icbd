@@ -634,6 +634,8 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 
 	while ((size_t)di < dstsize - 1 && src[si] != '\0') {
 		if (src[si] == '%')
+			if (di + 1 >= dstsize - 1)
+				break;
 			dst[di++] = '%', dst[di] = '%';
 		else if (src[si] == ' ' && flags & VIS_SP)
 			dst[di] = '_';
@@ -642,6 +644,8 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 		else {
 			td = snprintf(&dst[di], dstsize - di,
 			    "\\%03o", (unsigned char)src[si]);
+			if (td == -1 || td >= dstsize - di)
+				break;
 			di += td - 1;
 		}
 		si++, di++;
