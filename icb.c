@@ -633,18 +633,18 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 	int si = 0, di = 0, td;
 
 	while ((size_t)di < dstsize - 1 && src[si] != '\0') {
-		if (src[si] == '%')
-			if (di + 1 >= dstsize - 1)
+		if (src[si] == '%') {
+			if ((size_t)di + 1 >= dstsize - 1)
 				break;
 			dst[di++] = '%', dst[di] = '%';
-		else if (src[si] == ' ' && flags & VIS_SP)
+		} else if (src[si] == ' ' && flags & VIS_SP)
 			dst[di] = '_';
 		else if (isgraph(src[si]) || src[si] == ' ')
 			dst[di] = src[si];
 		else {
 			td = snprintf(&dst[di], dstsize - di,
 			    "\\%03o", (unsigned char)src[si]);
-			if (td == -1 || td >= dstsize - di)
+			if (td == -1 || (size_t)td >= dstsize - di)
 				break;
 			di += td - 1;
 		}
