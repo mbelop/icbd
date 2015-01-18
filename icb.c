@@ -599,11 +599,10 @@ icb_nextfield(char **buf, int notrspace)
 		(*buf)++;
 	if (*buf && **buf == ICB_M_SEP) {
 		**buf = '\0';
-		end = *buf;
 		(*buf)++;
-	} else
-		end = *buf;
-	while (notrspace && end && *(--end) == ' ' && end > start)
+	}
+	end = *buf;
+	while (notrspace && end && end > start && *(--end) == ' ')
 		*end = '\0';
 	return (start);
 }
