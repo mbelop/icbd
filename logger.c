@@ -21,6 +21,7 @@
 #include <sys/time.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include <limits.h>
 #include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,7 +60,7 @@ char file_ts[sizeof "0000-00"];
 char line_ts[sizeof "00:00"];
 struct event ev_tick;
 
-extern char logprefix[MAXPATHLEN/2];
+extern char logprefix[PATH_MAX/2];
 extern int dologging;
 
 int
@@ -223,7 +224,7 @@ logger_dispatch(struct bufferevent *bev, void *arg __attribute__((unused)))
 FILE *
 logger_open(char *group)
 {
-	char path[MAXPATHLEN];
+	char path[PATH_MAX];
 	FILE *fp = NULL;
 
 	/* make sure not to overflow the logfiles table */

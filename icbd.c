@@ -24,6 +24,8 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -43,13 +45,13 @@
 #include "icbd.h"
 
 struct stat modtabst;
-char modtabpath[MAXPATHLEN];
+char modtabpath[PATH_MAX];
 char modtab[ICB_MTABLEN][ICB_MAXNICKLEN];
 int  modtabcnt;
-char srvname[MAXHOSTNAMELEN];
+char srvname[NI_MAXHOST];
 int  creategroups;
 int  foreground;
-char logprefix[MAXPATHLEN/2];
+char logprefix[PATH_MAX/2];
 int  dodns = 1;
 int  dologging;
 int  verbose;
