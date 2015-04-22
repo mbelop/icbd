@@ -255,15 +255,20 @@ icb_groupmsg(struct icb_session *is, char *msg)
 	char buf[ICB_MSGSIZE];
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
-	int buflen = 1;
+	int res, buflen = 1;
 
 	if (strlen(msg) == 0) {
 		icb_error(is, "Empty message");
 		return;
 	}
 
-	buflen += snprintf(&buf[1], sizeof buf - 1, "%c%s%c%s", ICB_M_OPEN,
+	res = snprintf(&buf[1], sizeof buf - 1, "%c%s%c%s", ICB_M_OPEN,
 	    is->nick, ICB_M_SEP, msg);
+	if (res < 0) {
+		icb_error(is, "Format error");
+		return;
+	}
+	buflen += MIN((size_t)res, sizeof buf - 1);
 	buf[0] = buflen;
 
 	logger(ig->name, is->nick, msg);
@@ -372,7 +377,7 @@ icb_status(struct icb_session *is, int type, const char *fmt, ...)
 {
 	va_list ap;
 	char buf[ICB_MSGSIZE];
-	int buflen = 1;
+	int res, buflen = 1;
 	static const struct {
 		int		 type;
 		const char	*msg;
@@ -394,12 +399,26 @@ icb_status(struct icb_session *is, int type, const char *fmt, ...)
 
 	if (type < 0 || type > (int)nitems(msgtab) - 1)
 		return;
-	va_start(ap, fmt);
-	buflen += snprintf(&buf[1], sizeof buf - 1, "%c%s%c", ICB_M_STATUS,
+	res = snprintf(&buf[1], sizeof buf - 1, "%c%s%c", ICB_M_STATUS,
 	    msgtab[type].msg, ICB_M_SEP);
-	buflen += vsnprintf(&buf[buflen], sizeof buf - buflen, fmt, ap);
-	buf[0] = buflen;
+	if (res < 0) {
+		icbd_log(NULL, LOG_ERR, "Format error in %s", __func__);
+		return;
+	}
+	buflen += MIN((size_t)res, sizeof buf - 1);
+	if ((size_t)buflen >= sizeof buf) {
+		icbd_log(NULL, LOG_ERR, "Status buffer too small");
+		return;
+	}
+	va_start(ap, fmt);
+	res = vsnprintf(&buf[buflen], sizeof buf - buflen, fmt, ap);
 	va_end(ap);
+	if (res < 0) {
+		icbd_log(NULL, LOG_ERR, "Format error in %s", __func__);
+		return;
+	}
+	buflen += MIN((size_t)res, sizeof buf - buflen);
+	buf[0] = buflen;
 	icbd_send(is, buf, buflen + 1);
 }
 
@@ -435,11 +454,16 @@ icb_error(struct icb_session *is, const char *fmt, ...)
 {
 	char buf[ICB_MSGSIZE];
 	va_list ap;
-	int buflen = 1;
+	int res, buflen = 1;
 
 	va_start(ap, fmt);
-	buflen += vsnprintf(&buf[2], sizeof buf - 2, fmt, ap);
+	res = vsnprintf(&buf[2], sizeof buf - 2, fmt, ap);
 	va_end(ap);
+	if (res < 0) {
+		icbd_log(NULL, LOG_ERR, "Format error");
+		return;
+	}
+	buflen += MIN((size_t)res, sizeof buf - 2);
 	buf[0] = ++buflen; /* account for ICB_M_ERROR */
 	buf[1] = ICB_M_ERROR;
 	icbd_send(is, buf, buflen + 1);
@@ -624,11 +648,16 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
 {
 	char buf[ICB_MSGSIZE];
 	va_list ap;
-	int buflen = 1;
+	int res, buflen = 1;
 
 	va_start(ap, fmt);
-	buflen += vsnprintf(&buf[1], sizeof buf - 1, fmt, ap);
+	res = vsnprintf(&buf[1], sizeof buf - 1, fmt, ap);
 	va_end(ap);
+	if (res < 0) {
+		icbd_log(NULL, LOG_ERR, "Format error in %s", __func__);
+		return;
+	}
+	buflen += MIN((size_t)res, sizeof buf - 1);
 	buf[0] = buflen;
 	icbd_send(is, buf, buflen + 1);
 }
