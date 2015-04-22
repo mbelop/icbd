@@ -485,8 +485,10 @@ icb_dowho(struct icb_session *is, struct icb_group *ig)
 {
 	char buf[ICB_MSGSIZE - 10]; /* truncate to make sure all fits */
 	struct icb_session *s;
+	time_t now;
 	int nusers = 0;
 
+	now = getmonotime();
 	icb_cmdout(is, CMDOUT_CO, " ");
 	snprintf(buf, sizeof buf, "Group: %-8s (%cvl) Mod: %-13s Topic: %s",
 	    ig->name, ig->mod ? 'm' : 'p', ig->mod ? ig->mod->nick : "(None)",
@@ -496,7 +498,7 @@ icb_dowho(struct icb_session *is, struct icb_group *ig)
 		(void)snprintf(buf, sizeof buf,
 		    "%c%c%s%c%lld%c0%c%lld%c%s%c%s%c%s",
 		    icb_ismod(ig, s) ? 'm' : ' ', ICB_M_SEP,
-		    s->nick, ICB_M_SEP, getmonotime() - s->last,
+		    s->nick, ICB_M_SEP, now - s->last,
 		    ICB_M_SEP, ICB_M_SEP, s->login, ICB_M_SEP,
 		    s->client, ICB_M_SEP, s->host, ICB_M_SEP, " ");
 		icb_cmdout(is, CMDOUT_WL, buf);
