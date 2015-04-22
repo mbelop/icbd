@@ -142,7 +142,7 @@ icb_input(struct icb_session *is)
 int
 icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 {
-	char *defgrp = "1";
+	const char *defgrp = "1";
 	struct icb_group *ig;
 	struct icb_session *s;
 	char group[ICB_MAXGRPLEN];
