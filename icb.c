@@ -37,7 +37,6 @@ void   icb_command(struct icb_session *, char *, char *);
 void   icb_groupmsg(struct icb_session *, char *);
 int    icb_login(struct icb_session *, char *, char *, char *);
 int    icb_dowho(struct icb_session *, struct icb_group *);
-char  *icb_nextfield(char **, int);
 
 /*
  *  icb_init: initializes pointers to callbacks
@@ -75,7 +74,9 @@ int
 icb_input(struct icb_session *is)
 {
 	char *msg = is->buffer;
+	int msglen = is->length;
 	unsigned char type;
+	char *wptr = NULL;
 	int res = 0;
 
 	is->last = getmonotime();
@@ -87,12 +88,35 @@ icb_input(struct icb_session *is)
 	}
 	switch (type) {
 	case ICB_M_LOGIN: {
-		char *nick, *group, *client, *cmd;
+		char client[ICB_MAXNICKLEN];
+		char nick[ICB_MAXNICKLEN];
+		char group[ICB_MAXGRPLEN];
+		char cmd[ICB_MAXCMDLEN];
 
-		client = icb_nextfield(&msg, 1);
-		nick = icb_nextfield(&msg, 1);
-		group = icb_nextfield(&msg, 1);
-		cmd = icb_nextfield(&msg, 1);
+		if (icb_token(msg, msglen, &wptr, client, ICB_MAXNICKLEN,
+		    ICB_M_SEP, 1) < 0) {
+			icb_error(is, "Invalid client");
+			icbd_drop(is, NULL);
+			return (1);
+		}
+		if (icb_token(msg, msglen, &wptr, nick, ICB_MAXNICKLEN,
+		    ICB_M_SEP, 1) <= 0) {
+			icb_error(is, "Invalid nick");
+			icbd_drop(is, NULL);
+			return (1);
+		}
+		if (icb_token(msg, msglen, &wptr, group, ICB_MAXGRPLEN,
+		    ICB_M_SEP, 1) < 0) {
+			icb_error(is, "Invalid group");
+			icbd_drop(is, NULL);
+			return (1);
+		}
+		if (icb_token(msg, msglen, &wptr, cmd, ICB_MAXCMDLEN,
+		    ICB_M_SEP, 1) < 0) {
+			icb_error(is, "Invalid command");
+			icbd_drop(is, NULL);
+			return (1);
+		}
 		if (strlen(cmd) > 0 && cmd[0] == 'w') {
 			icb_error(is, "Command not implemented");
 			icbd_drop(is, NULL);
@@ -107,17 +131,25 @@ icb_input(struct icb_session *is)
 		break;
 	}
 	case ICB_M_OPEN: {
-		char *grpmsg;
-
-		grpmsg = icb_nextfield(&msg, 0);
-		icb_groupmsg(is, grpmsg);
+		icb_groupmsg(is, msg);
 		break;
 	}
 	case ICB_M_COMMAND: {
-		char *cmd, *arg;
+		char cmd[ICB_MAXCMDLEN];
+		char arg[ICB_MAXTOPICLEN];
 
-		cmd = icb_nextfield(&msg, 1);
-		arg = icb_nextfield(&msg, 0);
+		if (icb_token(msg, msglen, &wptr, cmd, ICB_MAXCMDLEN,
+		    ICB_M_SEP, 1) <= 0) {
+			icb_error(is, "Invalid command");
+			icbd_drop(is, NULL);
+			return (1);
+		}
+		if (icb_token(msg, msglen, &wptr, arg, ICB_MAXTOPICLEN,
+		    ICB_M_SEP, 1) < 0) {
+			icb_error(is, "Invalid argument");
+			icbd_drop(is, NULL);
+			return (1);
+		}
 		icb_command(is, cmd, arg);
 		break;
 	}
@@ -285,7 +317,7 @@ void
 icb_command(struct icb_session *is, char *cmd, char *arg)
 {
 	void (*handler)(struct icb_session *, char *);
-	char command[32]; /* XXX */
+	char command[ICB_MAXCMDLEN];
 
 	icb_vis(command, cmd, sizeof command, VIS_SP);
 
@@ -585,29 +617,6 @@ icb_pass(struct icb_group *ig, struct icb_session *from,
 }
 
 /*
- *  icb_nextfield: advances through a given buffer returning pointer to the
- *                 beginning of the icb field or an empty string otherwise;
- *                 cleans up trailing spaces
- */
-char *
-icb_nextfield(char **buf, int notrspace)
-{
-	char *start = *buf;
-	char *end = NULL;
-
-	while (*buf && **buf != '\0' && **buf != ICB_M_SEP)
-		(*buf)++;
-	if (*buf && **buf == ICB_M_SEP) {
-		**buf = '\0';
-		(*buf)++;
-	}
-	end = *buf;
-	while (notrspace && end && end > start && *(--end) == ' ')
-		*end = '\0';
-	return (start);
-}
-
-/*
  *  icb_sendfmt: formats a string and sends it over
  */
 void
@@ -631,12 +640,13 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
  *             after 'sep'.
  */
 int
-icb_token(char *buf, int len, char **bufptr, char *dst, int dlen, int sep)
+icb_token(char *buf, int len, char **bufptr, char *dst, int dstlen, int sep,
+    int trim)
 {
 	char *start;
 	int i, ret;
 
-	if (buf == NULL || len <= 0 || dlen <= 0)
+	if (buf == NULL || len <= 0 || dst == NULL || dstlen <= 0)
 		return (0);
 	if (*bufptr == NULL)
 		*bufptr = buf;
@@ -645,9 +655,11 @@ icb_token(char *buf, int len, char **bufptr, char *dst, int dlen, int sep)
 		if (**bufptr == sep || **bufptr == '\0') {
 			/* copy and null terminate the token */
 			ret = strlcpy(dst, start,
-			    MIN(*bufptr - start + 1, dlen));
+			    MIN(*bufptr - start + 1, dstlen));
 			if (**bufptr != '\0')
 				(*bufptr)++;
+			if (ret > 0 && trim)
+				ret = icb_trim(dst, dstlen);
 			return (ret);
 		}
 	}
@@ -657,10 +669,34 @@ icb_token(char *buf, int len, char **bufptr, char *dst, int dlen, int sep)
 	 * we should copy the resulting single field out.
 	 */
 	if (*bufptr - start > 0) {
-		ret = strlcpy(dst, start, MIN(*bufptr - start + 1, dlen));
+		ret = strlcpy(dst, start, MIN(*bufptr - start + 1, dstlen));
+		if (ret > 0 && trim)
+			ret = icb_trim(dst, dstlen);
 		return (ret);
 	}
 	return (0);
+}
+
+/*
+ *  icb_trim: trims trailing whitespace
+ */
+int
+icb_trim(char *buf, int len)
+{
+	char *p = buf;
+	int i;
+
+	for (i = 0; i < len && *p != '\0'; i++)
+		p++;
+	if (*p == '\0' && p - buf > 0)
+		p--;
+	while (p >= buf && isspace(*p)) {
+		*p = '\0';
+		i--;
+		if (p > buf)
+			p--;
+	}
+	return (i);
 }
 
 /*

@@ -129,7 +129,7 @@ main(int argc, char *argv[])
 
 	if (grplist) {
 		while (icb_token(grplist, strlen(grplist), &ptr, group,
-		    ICB_MAXGRPLEN, ',') > 0)
+		    ICB_MAXGRPLEN, ',', 0) > 0)
 			if (icb_addgroup(NULL, group) == NULL)
 				err(EX_UNAVAILABLE, NULL);
 	}

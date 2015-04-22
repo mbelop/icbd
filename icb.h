@@ -29,6 +29,7 @@
 #define ICB_MAXNICKLEN		 32
 #define ICB_MAXTOPICLEN		 160
 #define ICB_MAXHOSTLEN		 40
+#define ICB_MAXCMDLEN		 32
 #define ICB_MTABLEN		 50 /* XXX */
 
 #define ICB_M_LOGIN		 'a'
@@ -140,5 +141,6 @@ void		icb_status(struct icb_session *, int, const char *, ...);
 void		icb_status_group(struct icb_group *, struct icb_session *,
 		    int, const char *, ...);
 void		icb_who(struct icb_session *, struct icb_group *);
-int		icb_token(char *, int, char **, char *, int, int);
+int		icb_token(char *, int, char **, char *, int, int, int);
+int		icb_trim(char *, int);
 int		icb_vis(char *, const char *, size_t, int);
