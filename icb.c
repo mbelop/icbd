@@ -93,24 +93,28 @@ icb_input(struct icb_session *is)
 		char group[ICB_MAXGRPLEN];
 		char cmd[ICB_MAXCMDLEN];
 
+		memset(client, 0, sizeof client);
 		if (icb_token(msg, msglen, &wptr, client, ICB_MAXNICKLEN,
 		    ICB_M_SEP, 1) < 0) {
 			icb_error(is, "Invalid client");
 			icbd_drop(is, NULL);
 			return (1);
 		}
+		memset(nick, 0, sizeof nick);
 		if (icb_token(msg, msglen, &wptr, nick, ICB_MAXNICKLEN,
 		    ICB_M_SEP, 1) <= 0) {
 			icb_error(is, "Invalid nick");
 			icbd_drop(is, NULL);
 			return (1);
 		}
+		memset(group, 0, sizeof group);
 		if (icb_token(msg, msglen, &wptr, group, ICB_MAXGRPLEN,
 		    ICB_M_SEP, 1) < 0) {
 			icb_error(is, "Invalid login group");
 			icbd_drop(is, NULL);
 			return (1);
 		}
+		memset(cmd, 0, sizeof cmd);
 		if (icb_token(msg, msglen, &wptr, cmd, ICB_MAXCMDLEN,
 		    ICB_M_SEP, 1) < 0) {
 			icb_error(is, "Invalid command");
@@ -138,12 +142,14 @@ icb_input(struct icb_session *is)
 		char cmd[ICB_MAXCMDLEN];
 		char arg[ICB_MAXTOPICLEN];
 
+		memset(cmd, 0, sizeof cmd);
 		if (icb_token(msg, msglen, &wptr, cmd, ICB_MAXCMDLEN,
 		    ICB_M_SEP, 1) <= 0) {
 			icb_error(is, "Invalid command");
 			icbd_drop(is, NULL);
 			return (1);
 		}
+		memset(arg, 0, sizeof arg);
 		if (icb_token(msg, msglen, &wptr, arg, ICB_MAXTOPICLEN,
 		    ICB_M_SEP, 1) < 0) {
 			icb_error(is, "Invalid argument");
