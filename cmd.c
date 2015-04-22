@@ -176,7 +176,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 			icb_error(is, "Invalid group");
 			return;
 		} else {
-			if ((ig = icb_addgroup(is, group, NULL)) == NULL) {
+			if ((ig = icb_addgroup(is, group)) == NULL) {
 				icb_error(is, "Can't create group");
 				return;
 			}

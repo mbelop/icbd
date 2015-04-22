@@ -27,7 +27,6 @@
 
 #define ICB_MAXGRPLEN		 32
 #define ICB_MAXNICKLEN		 32
-#define ICB_MAXPASSLEN		 32
 #define ICB_MAXTOPICLEN		 160
 #define ICB_MAXHOSTLEN		 40
 #define ICB_MTABLEN		 50 /* XXX */
@@ -106,7 +105,6 @@ struct icb_session {
 
 struct icb_group {
 	char			 name[ICB_MAXGRPLEN];
-	char			 mpass[ICB_MAXPASSLEN];
 	char			 topic[ICB_MAXTOPICLEN];
 	LIST_ENTRY(icb_group)	 entry;
 	LIST_HEAD(, icb_session) sess;
@@ -124,7 +122,7 @@ void *		icb_cmd_lookup(char *);
 
 /* icb.c */
 struct icb_group *
-		icb_addgroup(struct icb_session *, char *, char *);
+		icb_addgroup(struct icb_session *, char *);
 void		icb_cmdout(struct icb_session *, int, char *);
 void		icb_delgroup(struct icb_group *);
 void		icb_error(struct icb_session *, const char *, ...);
@@ -142,4 +140,5 @@ void		icb_status(struct icb_session *, int, const char *, ...);
 void		icb_status_group(struct icb_group *, struct icb_session *,
 		    int, const char *, ...);
 void		icb_who(struct icb_session *, struct icb_group *);
+int		icb_token(char *, int, char **, char *, int, int);
 int		icb_vis(char *, const char *, size_t, int);

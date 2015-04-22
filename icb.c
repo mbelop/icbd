@@ -167,7 +167,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 			icbd_drop(is, NULL);
 			return (1);
 		} else {
-			if ((ig = icb_addgroup(is, group, NULL)) == NULL) {
+			if ((ig = icb_addgroup(is, group)) == NULL) {
 				icb_error(is, "Can't create group %s", group);
 				return (0);
 			}
@@ -440,15 +440,13 @@ icb_remove(struct icb_session *is, char *reason)
  *  icb_addgroup: adds a new group to the list
  */
 struct icb_group *
-icb_addgroup(struct icb_session *is, char *name, char *mpass)
+icb_addgroup(struct icb_session *is, char *name)
 {
 	struct icb_group *ig;
 
 	if ((ig = calloc(1, sizeof *ig)) == NULL)
 		return (NULL);
 	strlcpy(ig->name, name, sizeof ig->name);
-	if (mpass)
-		strlcpy(ig->mpass, mpass, sizeof ig->mpass);
 	if (is)
 		ig->mod = is;
 	LIST_INIT(&ig->sess);
@@ -624,6 +622,45 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
 	va_end(ap);
 	buf[0] = buflen;
 	icbd_send(is, buf, buflen + 1);
+}
+
+/*
+ *  icb_token: copies a sequence of characters delimited by the 'sep' character
+ *             from the source buffer 'buf' at offset indicated by 'bufptr' to
+ *             the destination buffer 'dst' and sets 'bufptr' to the next byte
+ *             after 'sep'.
+ */
+int
+icb_token(char *buf, int len, char **bufptr, char *dst, int dlen, int sep)
+{
+	char *start;
+	int i, ret;
+
+	if (buf == NULL || len <= 0 || dlen <= 0)
+		return (0);
+	if (*bufptr == NULL)
+		*bufptr = buf;
+	start = *bufptr;
+	for (i = *bufptr - buf; i < len; i++, (*bufptr)++) {
+		if (**bufptr == sep || **bufptr == '\0') {
+			/* copy and null terminate the token */
+			ret = strlcpy(dst, start,
+			    MIN(*bufptr - start + 1, dlen));
+			if (**bufptr != '\0')
+				(*bufptr)++;
+			return (ret);
+		}
+	}
+	/*
+	 * Reached the end of the buffer without finding a field separator
+	 * nor the end of line character.  If we have advanced our pointer
+	 * we should copy the resulting single field out.
+	 */
+	if (*bufptr - start > 0) {
+		ret = strlcpy(dst, start, MIN(*bufptr - start + 1, dlen));
+		return (ret);
+	}
+	return (0);
 }
 
 /*

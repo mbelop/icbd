@@ -64,7 +64,6 @@ void icbd_drop(struct icb_session *, char *);
 void icbd_ioerr(struct bufferevent *, short, void *);
 void icbd_dispatch(struct bufferevent *, void *);
 void icbd_log(struct icb_session *, int, const char *, ...);
-void icbd_grplist(char *);
 void icbd_restrict(void);
 void icbd_send(struct icb_session *, char *, ssize_t);
 
@@ -78,6 +77,8 @@ main(int argc, char *argv[])
 	const char *cause = NULL;
 	int ch, nsocks = 0, save_errno = 0;
 	int inet4 = 0, inet6 = 0;
+	char group[ICB_MAXGRPLEN], *grplist = NULL;
+	char *ptr = NULL;
 
 	/* init group lists before calling icb_addgroup */
 	icb_init();
@@ -97,7 +98,7 @@ main(int argc, char *argv[])
 			foreground++;
 			break;
 		case 'G':
-			icbd_grplist(optarg);
+			grplist = optarg;
 			break;
 		case 'L':
 			strlcpy(logprefix, optarg, sizeof logprefix);
@@ -123,8 +124,15 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	/* add group "1" as it's a login group for most of the clients */
-	if (icb_addgroup(NULL, "1", NULL) == NULL)
+	if (icb_addgroup(NULL, "1") == NULL)
 		err(EX_UNAVAILABLE, NULL);
+
+	if (grplist) {
+		while (icb_token(grplist, strlen(grplist), &ptr, group,
+		    ICB_MAXGRPLEN, ',') > 0)
+			if (icb_addgroup(NULL, group) == NULL)
+				err(EX_UNAVAILABLE, NULL);
+	}
 
 	if (argc == 0)
 		argc++;
@@ -488,34 +496,6 @@ icbd_restrict(void)
 	}
 
 	(void)setproctitle("icbd");
-}
-
-void
-icbd_grplist(char *list)
-{
-	char *s, *s1, *s2;
-	int last = 0;
-
-	if (!list || strlen(list) == 0)
-		return;
-
-	/* "group1[:pass1][,group2[:pass2],...]" */
-	s = list;
-	s1 = s2 = NULL;
-	while (!last && s) {
-		if ((s1 = strchr(s, ',')) != NULL)
-			*s1 = '\0';
-		else {
-			last = 1;
-			s1 = s;
-		}
-		if ((s2 = strchr(s, ':')) != NULL)
-			*s2 = '\0';
-		if (icb_addgroup(NULL, s, s2 ? ++s2 : NULL) == NULL)
-			err(EX_UNAVAILABLE, NULL);
-		s = ++s1;
-		s1 = s2 = NULL;
-	}
 }
 
 void
