@@ -107,7 +107,7 @@ icb_input(struct icb_session *is)
 		}
 		if (icb_token(msg, msglen, &wptr, group, ICB_MAXGRPLEN,
 		    ICB_M_SEP, 1) < 0) {
-			icb_error(is, "Invalid group");
+			icb_error(is, "Invalid login group");
 			icbd_drop(is, NULL);
 			return (1);
 		}
@@ -195,7 +195,7 @@ icb_login(struct icb_session *is, char *grp, char *nick, char *client)
 	}
 	if (ig == NULL) {
 		if (!creategroups) {
-			icb_error(is, "Invalid group %s", group);
+			icb_error(is, "Can't create new groups", group);
 			icbd_drop(is, NULL);
 			return (1);
 		} else {

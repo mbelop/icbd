@@ -161,7 +161,7 @@ icb_cmd_change(struct icb_session *is, char *arg)
 	int changing = 0;
 
 	if (strlen(arg) == 0) {
-		icb_error(is, "Invalid group");
+		icb_error(is, "Invalid group name");
 		return;
 	}
 
@@ -173,11 +173,11 @@ icb_cmd_change(struct icb_session *is, char *arg)
 	}
 	if (ig == NULL) {
 		if (!creategroups) {
-			icb_error(is, "Invalid group");
+			icb_error(is, "Can't create new groups");
 			return;
 		} else {
 			if ((ig = icb_addgroup(is, group)) == NULL) {
-				icb_error(is, "Can't create group");
+				icb_error(is, "Can't create group %s", group);
 				return;
 			}
 			icbd_log(NULL, LOG_DEBUG, "%s created group %s",
