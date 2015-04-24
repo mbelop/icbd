@@ -30,6 +30,8 @@
 #include "icb.h"
 #include "icbd.h"
 
+struct icb_grplist groups;
+
 extern int creategroups;
 extern char srvname[NI_MAXHOST];
 

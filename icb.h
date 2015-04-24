@@ -112,7 +112,8 @@ struct icb_group {
 	struct icb_session	*mod;
 };
 
-LIST_HEAD(icb_grlist, icb_group) groups;
+LIST_HEAD(icb_grplist, icb_group);
+extern struct icb_grplist groups;
 
 #ifndef nitems
 #define nitems(_a)	(sizeof((_a)) / sizeof((_a)[0]))
