@@ -397,6 +397,8 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 		/* process the message in full */
 		if (icb_input(is))
 			return;
+		/* cleanup the input buffer */
+		memset(is->buffer, 0, ICB_MSGSIZE);
 		is->rlen = is->length = 0;
 	}
 }
@@ -426,6 +428,11 @@ icbd_drop(struct icb_session *is, char *reason)
 		icbd_log(is, LOG_DEBUG, reason);
 	} else
 		icb_remove(is, NULL);
+
+	/* cleanup the input buffer */
+	memset(is->buffer, 0, ICB_MSGSIZE);
+	is->rlen = is->length = 0;
+
 	(void)close(EVBUFFER_FD(is->bev));
 	bufferevent_free(is->bev);
 	if (!ISSETF(is->flags, ICB_SF_DNSINPROGRESS))
