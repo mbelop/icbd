@@ -142,7 +142,6 @@ icb_input(struct icb_session *is)
 	}
 	case ICB_M_COMMAND: {
 		char cmd[ICB_MAXCMDLEN];
-		char arg[ICB_MAXTOPICLEN];
 
 		memset(cmd, 0, sizeof cmd);
 		if (icb_token(msg, msglen, &wptr, cmd, ICB_MAXCMDLEN,
@@ -151,14 +150,8 @@ icb_input(struct icb_session *is)
 			icbd_drop(is, NULL);
 			return (1);
 		}
-		memset(arg, 0, sizeof arg);
-		if (icb_token(msg, msglen, &wptr, arg, ICB_MAXTOPICLEN,
-		    ICB_M_SEP, 1) < 0) {
-			icb_error(is, "Invalid argument");
-			icbd_drop(is, NULL);
-			return (1);
-		}
-		icb_command(is, cmd, arg);
+		msg = wptr;
+		icb_command(is, cmd, msg);
 		break;
 	}
 	case ICB_M_PONG: {
