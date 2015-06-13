@@ -35,6 +35,7 @@
 #include <pwd.h>
 #include <login_cap.h>
 #include <locale.h>
+#include <ctype.h>
 #include <netdb.h>
 #include <event.h>
 #include <errno.h>
@@ -385,7 +386,8 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 			printf("-> read %lu out of %lu from %s:%d:\n",
 			    is->rlen, is->length, is->host, is->port);
 			for (i = 0; i < (int)is->rlen; i++)
-				printf(" %02x", (unsigned char)is->buffer[i]);
+				printf(isprint(is->buffer[i]) ? "%c" :
+				    "\\x%02x", (unsigned char)is->buffer[i]);
 			printf("\n");
 		}
 #endif
@@ -414,7 +416,8 @@ icbd_send(struct icb_session *is, char *buf, ssize_t size)
 
 		printf("-> wrote %lu to %s:%d:\n", size, is->host, is->port);
 		for (i = 0; i < size; i++)
-			printf(" %02x", (unsigned char)buf[i]);
+			printf(isprint(buf[i]) ? "%c" : "\\x%02x",
+			    (unsigned char)buf[i]);
 		printf("\n");
 	}
 #endif
