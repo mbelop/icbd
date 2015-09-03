@@ -90,9 +90,23 @@ icb_cmd_beep(struct icb_session *is, char *arg)
 
 	icb_vis(whom, arg, ICB_MAXNICKLEN, VIS_SP);
 
+	/* Search in the same group first */
 	LIST_FOREACH(s, &ig->sess, entry) {
 		if (strcmp(s->nick, whom) == 0)
 			break;
+	}
+	if (s == NULL) {
+		/* See if we can find someone else to beep */
+		LIST_FOREACH(ig, &groups, entry) {
+			if (strcmp(is->group->name, ig->name) == 0)
+				continue;
+			LIST_FOREACH(s, &ig->sess, entry) {
+				if (strcmp(s->nick, whom) == 0)
+					break;
+			}
+			if (s != NULL)
+				break;
+		}
 	}
 	if (s == NULL) {
 		icb_status(is, STATUS_NOTIFY, "%s is not signed on", whom);
