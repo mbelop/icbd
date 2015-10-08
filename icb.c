@@ -41,7 +41,7 @@ int    icb_login(struct icb_session *, char *, char *, char *);
 int    icb_dowho(struct icb_session *, struct icb_group *);
 
 /*
- *  icb_init: initializes pointers to callbacks
+ *  icb_init: initialize server name and a list of groups
  */
 void
 icb_init(void)
