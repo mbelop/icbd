@@ -73,7 +73,7 @@ void
 icb_cmd_help(struct icb_session *is, char *arg __attribute__((unused)))
 {
 	icb_status(is, STATUS_HELP, "Server supports following commands:");
-	icb_status(is, STATUS_HELP, "beep boot g m name nobeep pass topic");
+	icb_status(is, STATUS_HELP, "beep boot g m name nobeep pass topic w");
 }
 
 void
