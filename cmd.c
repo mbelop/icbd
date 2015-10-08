@@ -112,6 +112,10 @@ icb_cmd_beep(struct icb_session *is, char *arg)
 		icb_status(is, STATUS_NOTIFY, "%s is not signed on", whom);
 		return;
 	}
+	if (s == is) {
+		icb_error(is, "Very funny... Not!");
+		return;
+	}
 
 	if (ISSETF(s->flags, ICB_SF_NOBEEP | ICB_SF_NOBEEP2)) {
 		icb_error(is, "User has nobeep enabled");
