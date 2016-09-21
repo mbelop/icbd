@@ -81,8 +81,7 @@ The
 .Ar modtab
 file contains one nick per line; empty lines and lines starting with
 a hash symbol are ignored.
-It's located inside the chroot and read on startup and whenever a
-hangup signal is received.
+It's located inside the chroot.
 Every time a moderator check is performed,
 .Nm
 checks the modification time of the file and reloads the table if
