@@ -234,8 +234,7 @@ main(int argc, char *argv[])
 	/* initialize resolver */
 	res_init();
 
-	if (!foreground)
-		icbd_restrict();
+	icbd_restrict();
 
 	icbd_modupdate();
 
