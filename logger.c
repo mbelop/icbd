@@ -118,6 +118,11 @@ logger_init(void)
 		exit(EX_NOPERM);
 	}
 
+	if (pledge("stdio cpath wpath", NULL) == -1) {
+		syslog(LOG_ERR, "%s: pledge", __func__);
+		exit(EX_NOPERM);
+	}
+
 	event_init();
 
 	/* event for message processing */

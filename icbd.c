@@ -503,6 +503,18 @@ icbd_restrict(void)
 		exit(EX_NOPERM);
 	}
 
+	if (dodns) {
+		if (pledge("stdio inet rpath dns", NULL) == -1) {
+			syslog(LOG_ERR, "pledge");
+			exit(EX_NOPERM);
+		}
+	} else {
+		if (pledge("stdio inet rpath", NULL) == -1) {
+			syslog(LOG_ERR, "pledge");
+			exit(EX_NOPERM);
+		}
+	}
+
 	(void)setproctitle("icbd");
 }
 
