@@ -594,7 +594,7 @@ icb_who(struct icb_session *is, struct icb_group *ig)
 /*
  *  icb_ismod: checks whether group is moderated by "is"
  */
-inline int
+int
 icb_ismod(struct icb_group *ig, struct icb_session *is)
 {
 	return (ig->mod == is);

@@ -130,7 +130,7 @@ void		icb_delgroup(struct icb_group *);
 void		icb_error(struct icb_session *, const char *, ...);
 void		icb_init(void);
 int		icb_input(struct icb_session *);
-inline int	icb_ismod(struct icb_group *, struct icb_session *);
+int		icb_ismod(struct icb_group *, struct icb_session *);
 int		icb_modpermit(struct icb_session *, int);
 int		icb_pass(struct icb_group *, struct icb_session *,
 		    struct icb_session *);
