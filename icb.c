@@ -764,7 +764,8 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 		if (src[si] == '%') {
 			if ((size_t)di + 1 >= dstsize - 1)
 				break;
-			dst[di++] = '%', dst[di] = '%';
+			dst[di++] = '%';
+			dst[di] = '%';
 		} else if (src[si] == ' ' && flags & VIS_SP)
 			dst[di] = '_';
 		else if (isgraph(src[si]) || src[si] == ' ')
