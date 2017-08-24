@@ -33,7 +33,6 @@
 #include <sysexits.h>
 #include <syslog.h>
 #include <pwd.h>
-#include <login_cap.h>
 #include <locale.h>
 #include <ctype.h>
 #include <netdb.h>
@@ -471,10 +470,6 @@ icbd_restrict(void)
 		syslog(LOG_ERR, "No passwd entry for %s", ICBD_USER);
 		exit(EX_NOUSER);
 	}
-
-	if (setusercontext(NULL, pw, pw->pw_uid,
-	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
-		exit(EX_NOPERM);
 
 	if (stat(pw->pw_dir, &sb) == -1) {
 		syslog(LOG_ERR, "%s: %m", pw->pw_name);
