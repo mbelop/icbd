@@ -256,29 +256,34 @@ icb_groupmsg(struct icb_session *is, char *msg)
 	char buf[ICB_MSGSIZE];
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
-	int res, buflen = 1;
+	int res, buflen;
 
 	if (strlen(msg) == 0) {
 		icb_error(is, "Empty message");
 		return;
 	}
 
-	res = snprintf(&buf[1], sizeof buf - 1, "%c%s%c%s", ICB_M_OPEN,
-	    is->nick, ICB_M_SEP, msg);
-	if (res < 0) {
-		icb_error(is, "Format error");
-		return;
-	}
-	buflen += MIN((size_t)res, sizeof buf - 1);
-	buf[0] = buflen;
+	do {
+		res = snprintf(&buf[1], sizeof buf - 1, "%c%s%c%s", ICB_M_OPEN,
+		    is->nick, ICB_M_SEP, msg);
+		if (res < 0) {
+			icbd_log(is, LOG_ERR, "Format error in %s", __func__);
+			return;
+		}
+		/* res doesn't include the terminating NUL*/
+		buflen = MIN((size_t)res + 1, sizeof buf - 1);
+		buf[0] = buflen;
 
-	logger(ig->name, is->nick, msg);
+		logger(ig->name, is->nick, msg);
 
-	LIST_FOREACH(s, &ig->sess, entry) {
-		if (s == is)
-			continue;
-		icbd_send(s, buf, buflen + 1);
-	}
+		LIST_FOREACH(s, &ig->sess, entry) {
+			if (s == is)
+				continue;
+			icbd_send(s, buf, buflen + 1);
+		}
+
+		msg += buflen - 1;
+	} while (res > buflen - 1);
 }
 
 /*
@@ -289,7 +294,9 @@ icb_privmsg(struct icb_session *is, char *to, char *msg)
 {
 	struct icb_group *ig = is->group;
 	struct icb_session *s;
+	char buf[ICB_MSGSIZE];
 	char whom[ICB_MAXNICKLEN];
+	int res, buflen;
 
 	icb_vis(whom, to, ICB_MAXNICKLEN, VIS_SP);
 
@@ -313,7 +320,22 @@ icb_privmsg(struct icb_session *is, char *to, char *msg)
 			return;
 		}
 	}
-	icb_sendfmt(s, "%c%s%c%s", ICB_M_PERSONAL, is->nick, ICB_M_SEP, msg);
+
+	do {
+		res = snprintf(&buf[1], sizeof buf - 1, "%c%s%c%s",
+		    ICB_M_PERSONAL, is->nick, ICB_M_SEP, msg);
+		if (res < 0) {
+			icbd_log(is, LOG_ERR, "Format error in %s", __func__);
+			return;
+		}
+		/* res doesn't include the terminating NUL*/
+		buflen = MIN((size_t)res + 1, sizeof buf - 1);
+		buf[0] = buflen;
+
+		icbd_send(s, buf, buflen + 1);
+
+		msg += buflen - 1;
+	} while (res > buflen - 1);
 }
 
 /*
@@ -658,7 +680,7 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
 		icbd_log(NULL, LOG_ERR, "Format error in %s", __func__);
 		return;
 	}
-	buflen += MIN((size_t)res, sizeof buf - 1);
+	buflen += MIN((size_t)res + 1, sizeof buf - 1);
 	buf[0] = buflen;
 	icbd_send(is, buf, buflen + 1);
 }
