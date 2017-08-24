@@ -270,7 +270,7 @@ icb_groupmsg(struct icb_session *is, char *msg)
 			icbd_log(is, LOG_ERR, "Format error in %s", __func__);
 			return;
 		}
-		/* res doesn't include the terminating NUL*/
+		/* res doesn't include the terminating NUL */
 		buflen = MIN((size_t)res + 1, sizeof buf - 1);
 		buf[0] = buflen;
 
@@ -328,7 +328,7 @@ icb_privmsg(struct icb_session *is, char *to, char *msg)
 			icbd_log(is, LOG_ERR, "Format error in %s", __func__);
 			return;
 		}
-		/* res doesn't include the terminating NUL*/
+		/* res doesn't include the terminating NUL */
 		buflen = MIN((size_t)res + 1, sizeof buf - 1);
 		buf[0] = buflen;
 
