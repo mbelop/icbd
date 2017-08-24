@@ -30,7 +30,6 @@
 #include <syslog.h>
 #include <sysexits.h>
 #include <time.h>
-#include <login_cap.h>
 #include <event.h>
 #include <pwd.h>
 
@@ -96,10 +95,6 @@ logger_init(void)
 		    ICBD_USER);
 		exit(EX_NOUSER);
 	}
-
-	if (setusercontext(NULL, pw, pw->pw_uid,
-	    LOGIN_SETALL & ~LOGIN_SETUSER) < 0)
-		exit(EX_NOPERM);
 
 	if (chroot(pw->pw_dir) < 0) {
 		syslog(LOG_ERR, "%s: %s: %m", __func__, pw->pw_dir);
