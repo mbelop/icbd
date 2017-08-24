@@ -757,9 +757,10 @@ icb_trim(char *buf, int len)
 int
 icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 {
-	int si = 0, di = 0, td;
+	int si, di, td;
 
-	while ((size_t)di < dstsize - 1 && src[si] != '\0') {
+	for (si = 0, di = 0; (size_t)di < dstsize - 1 && src[si] != '\0';
+	    si++, di++) {
 		if (src[si] == '%') {
 			if ((size_t)di + 1 >= dstsize - 1)
 				break;
@@ -775,7 +776,6 @@ icb_vis(char *dst, const char *src, size_t dstsize, int flags)
 				break;
 			di += td - 1;
 		}
-		si++, di++;
 	}
 	dst[MIN((size_t)di, dstsize - 1)] = '\0';
 	return (0);
