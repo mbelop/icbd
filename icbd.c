@@ -392,7 +392,7 @@ icbd_dispatch(struct bufferevent *bev, void *arg)
 		/* see you next time around */
 		if (is->rlen < is->length)
 			return;
-		/* null-terminate the data */
+		/* nul-terminate the data */
 		is->buffer[MIN(is->rlen, ICB_MSGSIZE - 1)] = '\0';
 		/* process the message in full */
 		if (icb_input(is))
