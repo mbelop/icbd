@@ -671,7 +671,7 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
 {
 	char buf[ICB_MSGSIZE];
 	va_list ap;
-	int res, buflen = 1;
+	int res, buflen;
 
 	va_start(ap, fmt);
 	res = vsnprintf(&buf[1], sizeof buf - 1, fmt, ap);
@@ -680,7 +680,7 @@ icb_sendfmt(struct icb_session *is, const char *fmt, ...)
 		icbd_log(NULL, LOG_ERR, "Format error in %s", __func__);
 		return;
 	}
-	buflen += MIN((size_t)res + 1, sizeof buf - 1);
+	buflen = MIN((size_t)res + 1, sizeof buf - 1);
 	buf[0] = buflen;
 	icbd_send(is, buf, buflen + 1);
 }
