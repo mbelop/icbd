@@ -326,10 +326,11 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 	struct icb_session *s;
 	char whom[ICB_MAXNICKLEN];
 
-	if (!ig->mod) {		/* if there is no mod, try grabbing it */
-		if (icb_modpermit(is, 0) && icb_pass(ig, ig->mod, is) < 0)
-			icb_error(is, "Acquiring group moderation failed.");
-	} else if (icb_ismod(ig, is)) {
+	if (icb_ismod(ig, is)) {
+		/*
+		 * we're a current group moderator, allow to relinquish
+		 * the right and to pass it down to everybody else.
+		 */
 		if (strlen(arg) == 0) {
 			/* no argument: relinquish moderator */
 			(void)icb_pass(ig, ig->mod, NULL);
@@ -344,16 +345,21 @@ icb_cmd_pass(struct icb_session *is, char *arg)
 			icb_status(is, STATUS_NOTIFY, "No such user");
 			return;
 		}
-		if (icb_modpermit(s, 0) && icb_pass(ig, ig->mod, s) < 0)
-			icb_error(s, "Acquiring group moderation failed.");
+		if (icb_pass(ig, ig->mod, s) < 0)
+			icb_error(is, "Failed to pass group moderation.");
 	} else {
 		/*
 		 * if group is moderated and we're not the moderator,
 		 * but modtab is enabled, then check the permission
-		 * and pass moderation if successful.
+		 * and pass moderation if successful.  if there's no
+		 * current moderator, don't enforce the modtab.
 		 */
-		if (icb_modpermit(is, 1) && icb_pass(ig, ig->mod, is) < 0)
-			icb_error(is, "Acquiring group moderation failed.");
+		if (!icb_modpermit(is, ig->mod ? 1 : 0)) {
+			icb_error(is, "Operation not permitted.");
+			return;
+		}
+		if (icb_pass(ig, ig->mod, is) < 0)
+			icb_error(is, "Failed to acquire group moderation.");
 	}
 }
 
