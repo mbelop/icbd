@@ -194,16 +194,16 @@ logger_dispatch(struct bufferevent *bev, void *arg __attribute__((unused)))
 		res = bufferevent_read(bev, &buf[nread],
 		    e->length - (nread - sizeof *e));
 		nread += res;
+		if (nread - sizeof *e < e->length)
+			return;
 #ifdef DEBUG
 		{
-			printf("logger read %lu out of %lu:\n", res, e->length);
-			for (i = 0; i < (int)res; i++)
+			printf("logger read %lu\n", nread - sizeof *e);
+			for (i = 0; i < (int)(nread - sizeof *e); i++)
 				printf(" %02x", (unsigned char)m[i]);
 			printf("\n");
 		}
 #endif
-		if (nread - sizeof *e < e->length)
-			return;
 		/* terminate the buffer */
 		m[MIN(nread - sizeof *e, ICB_MSGSIZE - 1)] = '\0';
 		/* find the appropriate log file */
